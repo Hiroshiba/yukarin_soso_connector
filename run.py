@@ -2,6 +2,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from typing import List
 
 import numpy
 import soundfile
@@ -17,6 +18,14 @@ from yukarin_soso.config import Config as ConfigSoso
 from yukarin_soso.generator import Generator as GeneratorSoso
 
 from inference_hifigan import inference_hifigan
+
+
+def f0_mean(f0: numpy.ndarray, rate: float, split_second_list: List[float]):
+    indexes = numpy.floor(numpy.array(split_second_list) * rate).astype(int)
+    for a in numpy.split(f0, indexes):
+        a[:] = numpy.mean(a[a > 0])
+    f0[numpy.isnan(f0)] = 0
+    return f0
 
 
 def run(text: str, speaker_id: int):
@@ -120,16 +129,18 @@ def run(text: str, speaker_id: int):
 
     generator_soso = GeneratorSoso(
         config=ConfigSoso.from_dict(d),
-        predictor=Path("data/yukarin_soso/predictor_120000.pth"),
+        predictor=Path("data/yukarin_soso/predictor_260000.pth"),
         use_gpu=False,
     )
+    if generator_soso.config.dataset.f0_process_mode == "phoneme_mean":
+        f0 = f0_mean(f0=f0, rate=rate, split_second_list=phoneme_length[:-1].cumsum())
 
     array = numpy.zeros((len(phoneme), JvsPhoneme.num_phoneme), dtype=numpy.float32)
     array[numpy.arange(len(phoneme)), phoneme] = 1
     phoneme = array
 
-    f0 = SamplingData(array=f0, rate=200).resample(24000 / 256)
-    phoneme = SamplingData(array=phoneme, rate=200).resample(24000 / 256)
+    f0 = SamplingData(array=f0, rate=rate).resample(24000 / 256)
+    phoneme = SamplingData(array=phoneme, rate=rate).resample(24000 / 256)
 
     spec = generator_soso.generate(
         f0=f0[numpy.newaxis, :, numpy.newaxis],

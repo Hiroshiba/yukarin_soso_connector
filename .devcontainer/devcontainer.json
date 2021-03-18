@@ -1,0 +1,39 @@
+{
+    "name": "yukarin_soso_connector",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": "..",
+    },
+    "settings": {
+        "python.linting.enabled": true,
+        "python.linting.flake8Enabled": true,
+        "python.linting.flake8Args": [
+            "--max-line-length=88",
+            "--ignore=E203,W503"
+        ],
+        "python.linting.mypyEnabled": true,
+        "python.linting.lintOnSave": true,
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "python.jediEnabled": false,
+        "python.languageServer": "Pylance",
+        "[python]": {
+            "editor.codeActionsOnSave": {
+                "source.organizeImports": true
+            }
+        },
+        "python.sortImports.args": [
+            "--multi-line=3",
+            "--trailing-comma",
+            "--force-grid-wrap=0",
+            "--use-parentheses",
+            "--line-width=88",
+        ],
+    },
+    "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "mhutchie.git-graph",
+    ],
+    "postCreateCommand": "pip install black mypy flake8 jupyter matplotlib"
+}

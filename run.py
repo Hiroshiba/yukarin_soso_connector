@@ -2,6 +2,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from pprint import pprint
 from typing import List
 
 import numpy
@@ -12,12 +13,16 @@ from acoustic_feature_extractor.data.sampling_data import SamplingData
 from openjtalk_label_getter import OutputType, openjtalk_label_getter
 from yukarin_s.config import Config as ConfigS
 from yukarin_s.generator import Generator as GeneratorS
+from yukarin_sa.config import Config as ConfigSa
+from yukarin_sa.generator import Generator as GeneratorSa
 from yukarin_sos.config import Config as ConfigSos
 from yukarin_sos.generator import Generator as GeneratorSos
 from yukarin_soso.config import Config as ConfigSoso
 from yukarin_soso.generator import Generator as GeneratorSoso
 
 from inference_hifigan import inference_hifigan
+
+mora_phoneme_list = ["a", "i", "u", "e", "o", "A", "I", "U", "E", "O", "N", "cl", "pau"]
 
 
 def f0_mean(f0: numpy.ndarray, rate: float, split_second_list: List[float]):
@@ -29,6 +34,8 @@ def f0_mean(f0: numpy.ndarray, rate: float, split_second_list: List[float]):
 
 
 def run(text: str, speaker_id: int):
+    rate = 200
+
     # phoneme
     label_list = openjtalk_label_getter(
         text=text,
@@ -41,7 +48,7 @@ def run(text: str, speaker_id: int):
         output_log_path="hiho_openjtalk_log.txt",
         output_type=OutputType.full_context_label,
     )
-    json.dump([p.label for p in label_list], open("hiho_phoneme_list.json", mode="w"))
+    json.dump([p.label for p in label_list], open("hiho_label_list.json", mode="w"))
 
     is_type1 = False
     phoneme_list = label_list
@@ -68,26 +75,71 @@ def run(text: str, speaker_id: int):
         start_accent_list.append(is_start_accent)
         end_accent_list.append(is_end_accent)
 
+    start_accent_list = numpy.array(start_accent_list, dtype=numpy.int64)
+    end_accent_list = numpy.array(end_accent_list, dtype=numpy.int64)
+
+    json.dump([p.label for p in phoneme_list], open("hiho_phoneme_list.json", mode="w"))
+
     # yukarin_s
-    with open("data/yukarin_s/config.yaml") as f:
+    with open("data/yukarin_s/check-bs128-hs32/config.yaml") as f:
         d = yaml.safe_load(f)
 
     generator_s = GeneratorS(
         config=ConfigS.from_dict(d),
-        predictor=Path("data/yukarin_s/predictor_20000.pth"),
+        predictor=Path("data/yukarin_s/check-bs128-hs32/predictor_50000.pth"),
         use_gpu=False,
     )
 
     phoneme_list = [
-        JvsPhoneme(phoneme=p.label, start=p.start, end=p.end)
-        for p in phoneme_list[1:-1]
+        JvsPhoneme(phoneme=p.label, start=p.start, end=p.end) for p in phoneme_list
     ]
-    phoneme_list = numpy.array([p.phoneme_id for p in phoneme_list])
+    phoneme_list = JvsPhoneme.convert(phoneme_list)
+    phoneme_list_s = numpy.array([p.phoneme_id for p in phoneme_list])
 
     phoneme_length = generator_s.generate(
-        phoneme_list=phoneme_list, speaker_id=speaker_id
+        phoneme_list=phoneme_list_s,
+        speaker_id=speaker_id,
     )
+    phoneme_length[0] = phoneme_length[-1] = 0.1
+    phoneme_length = numpy.round(phoneme_length * rate) / rate
     numpy.save("hiho_phoneme_length.npy", phoneme_length)
+
+    # yukarin_sa
+    with open("data/yukarin_sa/mora_vowel-nopl-lr1e-2-aehs48/config.yaml") as f:
+        d = yaml.safe_load(f)
+
+    generator_sa = GeneratorSa(
+        config=ConfigSa.from_dict(d),
+        predictor=Path(
+            "data/yukarin_sa/mora_vowel-nopl-lr1e-2-aehs48/predictor_90000.pth"
+        ),
+        use_gpu=False,
+    )
+
+    if generator_sa.config.dataset.f0_process_mode == "mora_vowel":
+        indexes = [
+            i for i, p in enumerate(phoneme_list) if p.phoneme in mora_phoneme_list
+        ]
+        phoneme_list_sa = numpy.array([phoneme_list[i].phoneme_id for i in indexes])
+        start_accent_list_sa = start_accent_list[indexes]
+        end_accent_list_sa = end_accent_list[indexes]
+        phoneme_length_sa = numpy.array(
+            [
+                a.sum()
+                for a in numpy.split(phoneme_length, numpy.array(indexes[:-1]) + 1)
+            ]
+        )
+    else:
+        phoneme_list_sa = numpy.array([p.phoneme_id for p in phoneme_list])
+        phoneme_length_sa = phoneme_length
+
+    _, f0_list = generator_sa.generate(
+        phoneme_list=phoneme_list_sa,
+        start_accent_list=start_accent_list_sa,
+        end_accent_list=end_accent_list_sa,
+        speaker_id=speaker_id,
+    )
+    numpy.save("hiho_f0_list.npy", f0_list)
 
     # yukarin_sos
     with open("data/yukarin_sos/config.yaml") as f:
@@ -99,14 +151,8 @@ def run(text: str, speaker_id: int):
         use_gpu=False,
     )
 
-    rate = 200
-
-    phoneme_list = numpy.r_[0, phoneme_list, 0]
-    start_accent_list = numpy.array(start_accent_list, dtype=numpy.int64)
-    end_accent_list = numpy.array(end_accent_list, dtype=numpy.int64)
-    phoneme_length = numpy.r_[0.1, phoneme_length, 0.1]
     phoneme = numpy.repeat(
-        phoneme_list, numpy.round(phoneme_length * rate).astype(numpy.int32)
+        phoneme_list_s, numpy.round(phoneme_length * rate).astype(numpy.int32)
     )
     start_accent = numpy.repeat(
         start_accent_list, numpy.round(phoneme_length * rate).astype(numpy.int32)
@@ -115,21 +161,32 @@ def run(text: str, speaker_id: int):
         end_accent_list, numpy.round(phoneme_length * rate).astype(numpy.int32)
     )
 
-    f0 = generator_sos.generate(
-        phoneme=phoneme[numpy.newaxis],
-        start_accent=start_accent[numpy.newaxis],
-        end_accent=end_accent[numpy.newaxis],
-        speaker_id=numpy.array(speaker_id).reshape(1),
-    )[0]
+    if f0_list is None:
+        f0 = generator_sos.generate(
+            phoneme=phoneme[numpy.newaxis],
+            start_accent=start_accent[numpy.newaxis],
+            end_accent=end_accent[numpy.newaxis],
+            speaker_id=numpy.array(speaker_id).reshape(1),
+        )[0]
+
+    else:
+        f0 = numpy.repeat(
+            f0_list, numpy.round(phoneme_length_sa * rate).astype(numpy.int32)
+        )
+
     numpy.save("hiho_f0.npy", f0)
 
     # yukarin_soso
-    with open("data/yukarin_soso/config.yaml") as f:
+    with open(
+        "data/yukarin_soso/f0mean-mora-norm-sl1280-bs32-lr3.0e-04-try1/config.yaml"
+    ) as f:
         d = yaml.safe_load(f)
 
     generator_soso = GeneratorSoso(
         config=ConfigSoso.from_dict(d),
-        predictor=Path("data/yukarin_soso/predictor_260000.pth"),
+        predictor=Path(
+            "data/yukarin_soso/f0mean-mora-norm-sl1280-bs32-lr3.0e-04-try1/predictor_300000.pth"
+        ),
         use_gpu=False,
     )
     if generator_soso.config.dataset.f0_process_mode == "phoneme_mean":

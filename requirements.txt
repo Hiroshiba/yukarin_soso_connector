@@ -1,3 +1,4 @@
+pyopenjtalk
 pyyaml
 git+https://github.com/Hiroshiba/acoustic_feature_extractor@db621adef6ef3899e113d34a890b55df75182bc2
 git+https://github.com/Hiroshiba/openjtalk-label-getter@64a88574b181edad619e35929677f0471bc8fee4

@@ -67,26 +67,37 @@ class Forwarder:
         super().__init__()
 
         # yukarin_s
+        self.yukarin_s_phoneme_class: Optional[Type[BasePhoneme]] = None
+
         with yukarin_s_model_dir.joinpath("config.yaml").open() as f:
-            d = yaml.safe_load(f)
+            config = ConfigS.from_dict(yaml.safe_load(f))
 
         yukarin_s_generator = GeneratorS(
-            config=ConfigS.from_dict(d),
+            config=config,
             predictor=_get_predictor_model_path(yukarin_s_model_dir),
             use_gpu=use_gpu,
         )
+
+        self.yukarin_s_phoneme_class = phoneme_type_to_class[
+            config.dataset.phoneme_type
+        ]
 
         self.yukarin_s_generator = yukarin_s_generator
         print("yukarin_s loaded!")
 
         # yukarin_sa
         with yukarin_sa_model_dir.joinpath("config.yaml").open() as f:
-            d = yaml.safe_load(f)
+            config = ConfigSa.from_dict(yaml.safe_load(f))
 
         yukarin_sa_generator = GeneratorSa(
-            config=ConfigSa.from_dict(d),
+            config=config,
             predictor=_get_predictor_model_path(yukarin_sa_model_dir),
             use_gpu=use_gpu,
+        )
+
+        assert (
+            self.yukarin_s_phoneme_class
+            is phoneme_type_to_class[config.dataset.phoneme_type]
         )
 
         assert yukarin_sa_generator.config.dataset.f0_process_mode == "voiced_mora"
@@ -94,7 +105,7 @@ class Forwarder:
         print("yukarin_sa loaded!")
 
         # yukarin_soso or yukarin_sosoa
-        self.phoneme_class: Optional[Type[BasePhoneme]] = None
+        self.yukarin_soso_phoneme_class: Optional[Type[BasePhoneme]] = None
 
         if yukarin_soso_model_dir is not None:
             with yukarin_soso_model_dir.joinpath("config.yaml").open() as f:
@@ -107,7 +118,9 @@ class Forwarder:
             )
             yukarin_soso_generator.predictor.apply(remove_weight_norm)
 
-            self.phoneme_class = phoneme_type_to_class[config.dataset.phoneme_type]
+            self.yukarin_soso_phoneme_class = phoneme_type_to_class[
+                config.dataset.phoneme_type
+            ]
 
             self.yukarin_soso_generator = yukarin_soso_generator
             print("yukarin_soso loaded!")
@@ -126,7 +139,9 @@ class Forwarder:
             )
             yukarin_sosoa_generator.predictor.apply(remove_weight_norm)
 
-            self.phoneme_class = phoneme_type_to_class[config.dataset.phoneme_type]
+            self.yukarin_soso_phoneme_class = phoneme_type_to_class[
+                config.dataset.phoneme_type
+            ]
 
             self.yukarin_sosoa_generator = yukarin_sosoa_generator
             print("yukarin_sosoa loaded!")
@@ -205,11 +220,13 @@ class Forwarder:
         end_accent_phrase_list = numpy.array(end_accent_phrase_list, dtype=numpy.int64)
 
         # forward yukarin s
+        assert self.yukarin_s_phoneme_class is not None
+
         phoneme_data_list = [
-            JvsPhoneme(phoneme=p, start=i, end=i + 1)
+            self.yukarin_s_phoneme_class(phoneme=p, start=i, end=i + 1)
             for i, p in enumerate(phoneme_str_list)
         ]
-        phoneme_data_list = JvsPhoneme.convert(phoneme_data_list)
+        phoneme_data_list = self.yukarin_s_phoneme_class.convert(phoneme_data_list)
         phoneme_list_s = numpy.array([p.phoneme_id for p in phoneme_data_list])
 
         phoneme_length = self.yukarin_s_generator.generate(
@@ -262,19 +279,25 @@ class Forwarder:
         )
 
         # forward yukarin soso
-        assert self.phoneme_class is not None
+        assert self.yukarin_soso_phoneme_class is not None
 
-        if self.phoneme_class is not JvsPhoneme:
+        if (
+            self.yukarin_soso_phoneme_class is not JvsPhoneme
+            and self.yukarin_soso_phoneme_class is not self.yukarin_s_phoneme_class
+        ):
             phoneme = numpy.array(
                 [
-                    self.phoneme_class.phoneme_list.index(JvsPhoneme.phoneme_list[p])
+                    self.yukarin_soso_phoneme_class.phoneme_list.index(
+                        JvsPhoneme.phoneme_list[p]
+                    )
                     for p in phoneme
                 ],
                 dtype=numpy.int32,
             )
 
         array = numpy.zeros(
-            (len(phoneme), self.phoneme_class.num_phoneme), dtype=numpy.float32
+            (len(phoneme), self.yukarin_soso_phoneme_class.num_phoneme),
+            dtype=numpy.float32,
         )
         array[numpy.arange(len(phoneme)), phoneme] = 1
         phoneme = array

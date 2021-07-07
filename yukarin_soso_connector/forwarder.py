@@ -1,5 +1,4 @@
 import json
-import re
 from pathlib import Path
 from typing import Optional, Type
 
@@ -25,33 +24,7 @@ from yukarin_sosoa.config import Config as ConfigSosoa
 from yukarin_sosoa.generator import Generator as YukarinSosoaGenerator
 
 from yukarin_soso_connector.full_context_label import extract_full_context_label
-
-
-def _extract_number(f):
-    s = re.findall(r"\d+", str(f))
-    return int(s[-1]) if s else -1
-
-
-def _get_predictor_model_path(
-    model_dir: Path,
-    iteration: int = None,
-    prefix: str = "predictor_",
-    postfix: str = ".pth",
-):
-    if iteration is None:
-        paths = model_dir.glob(prefix + "*" + postfix)
-        model_path = list(sorted(paths, key=_extract_number))[-1]
-    else:
-        model_path = model_dir / (prefix + "{}.pth".format(iteration))
-        assert model_path.exists()
-    return model_path
-
-
-def remove_weight_norm(m):
-    try:
-        torch.nn.utils.remove_weight_norm(m)
-    except ValueError:
-        pass
+from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
 
 
 class Forwarder:
@@ -74,9 +47,10 @@ class Forwarder:
 
         yukarin_s_generator = GeneratorS(
             config=config,
-            predictor=_get_predictor_model_path(yukarin_s_model_dir),
+            predictor=get_predictor_model_path(yukarin_s_model_dir),
             use_gpu=use_gpu,
         )
+        yukarin_s_generator.predictor.apply(remove_weight_norm)
 
         self.yukarin_s_phoneme_class = phoneme_type_to_class[
             config.dataset.phoneme_type
@@ -91,9 +65,10 @@ class Forwarder:
 
         yukarin_sa_generator = GeneratorSa(
             config=config,
-            predictor=_get_predictor_model_path(yukarin_sa_model_dir),
+            predictor=get_predictor_model_path(yukarin_sa_model_dir),
             use_gpu=use_gpu,
         )
+        yukarin_sa_generator.predictor.apply(remove_weight_norm)
 
         assert (
             self.yukarin_s_phoneme_class
@@ -113,7 +88,7 @@ class Forwarder:
 
             yukarin_soso_generator = YukarinSosoGenerator(
                 config=config,
-                predictor=_get_predictor_model_path(yukarin_soso_model_dir),
+                predictor=get_predictor_model_path(yukarin_soso_model_dir),
                 use_gpu=use_gpu,
             )
             yukarin_soso_generator.predictor.apply(remove_weight_norm)
@@ -134,7 +109,7 @@ class Forwarder:
 
             yukarin_sosoa_generator = YukarinSosoaGenerator(
                 config=config,
-                predictor=_get_predictor_model_path(yukarin_sosoa_model_dir),
+                predictor=get_predictor_model_path(yukarin_sosoa_model_dir),
                 use_gpu=use_gpu,
             )
             yukarin_sosoa_generator.predictor.apply(remove_weight_norm)
@@ -157,7 +132,7 @@ class Forwarder:
 
         hifi_gan_predictor = HifiGanPredictor(vocoder_model_config).to(device)
         checkpoint_dict = torch.load(
-            _get_predictor_model_path(hifigan_model_dir, prefix="g_", postfix=""),
+            get_predictor_model_path(hifigan_model_dir, prefix="g_", postfix=""),
             map_location=device,
         )
         hifi_gan_predictor.load_state_dict(checkpoint_dict["generator"])

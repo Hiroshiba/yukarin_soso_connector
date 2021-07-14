@@ -8,12 +8,14 @@ from libcpp.string cimport string
 cpdef initialize(
     str yukarin_s_forwarder_path,
     str yukarin_sa_forwarder_path,
-    str decode_forwarder_path
+    str decode_forwarder_path,
+    bool use_gpu
 ):
     cdef bool success = c_initialize(
         <string> yukarin_s_forwarder_path.encode(),
         <string> yukarin_sa_forwarder_path.encode(),
-        <string> decode_forwarder_path.encode()
+        <string> decode_forwarder_path.encode(),
+        use_gpu
     )
     assert success
 

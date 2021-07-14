@@ -6,7 +6,8 @@ cdef extern from "each_cpp_forwarder.h":
     bool c_initialize "initialize" (
         string yukarin_s_forwarder_path,
         string yukarin_sa_forwarder_path,
-        string decode_forwarder_path
+        string decode_forwarder_path,
+        bool use_gpu
     )
 
     bool c_yukarin_s_forward "yukarin_s_forward" (

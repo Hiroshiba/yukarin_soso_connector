@@ -11,7 +11,7 @@
 #endif
 
 DllExport bool initialize(std::string yukarin_s_forwarder_path, std::string yukarin_sa_forwarder_path,
-                          std::string decode_forwarder_path);
+                          std::string decode_forwarder_path, bool use_gpu);
 
 DllExport bool yukarin_s_forward(int length, long *phoneme_list, long *speaker_id, std::vector<float> *output,
                                  std::vector<long> *output_size);

@@ -1,27 +1,44 @@
 #include <torch/script.h>
+#include <torch/torch.h>
 
 #include <iostream>
 #include <memory>
 #include <string>
 
+#define HIHO_DEBUG
+
+#ifdef HIHO_DEBUG
+#define tryOrPassStart if (true)
+#define tryOrPassInter else
+#else
+#define tryOrPassStart try
+#define tryOrPassInter catch (...)
+#endif
+
+torch::Device *device;
 torch::jit::script::Module yukarin_s_forwarder;
 torch::jit::script::Module yukarin_sa_forwarder;
 torch::jit::script::Module decode_forwarder;
 
 bool initialize(std::string yukarin_s_forwarder_path, std::string yukarin_sa_forwarder_path,
-                std::string decode_forwarder_path) {
-    try {
+                std::string decode_forwarder_path, bool use_gpu) {
+    tryOrPassStart {
         yukarin_s_forwarder = torch::jit::load(yukarin_s_forwarder_path);
         yukarin_sa_forwarder = torch::jit::load(yukarin_sa_forwarder_path);
         decode_forwarder = torch::jit::load(decode_forwarder_path);
+        if (!use_gpu) {
+            device = new torch::Device(torch::kCPU);
+        } else {
+            assert(torch::cuda::is_available());
+            device = new torch::Device(torch::kCUDA);
+        }
         return true;
-    } catch (...) {
-        return false;
     }
+    tryOrPassInter { return false; }
 }
 
 at::Tensor array_to_tensor(void *data, at::IntArrayRef sizes, at::ScalarType dtype) {
-    return torch::from_blob(data, sizes, torch::TensorOptions().dtype(dtype));
+    return torch::from_blob(data, sizes, torch::TensorOptions().dtype(dtype)).to(*device);
 }
 
 template <class T>
@@ -34,26 +51,25 @@ std::vector<at::Tensor> arrays_to_tensors(std::vector<T *> datas, at::IntArrayRe
 
 bool yukarin_s_forward(int length, long *phoneme_list, long *speaker_id, std::vector<float> *output,
                        std::vector<long> *output_size) {
-    try {
+    tryOrPassStart {
         std::vector<torch::jit::IValue> inputs = {
             array_to_tensor(phoneme_list, {length}, torch::kInt64),
             array_to_tensor(speaker_id, {1}, torch::kInt64),
         };
-        auto output_tensor = yukarin_s_forwarder.forward(inputs).toTensor().contiguous();
+        auto output_tensor = yukarin_s_forwarder.forward(inputs).toTensor().cpu().contiguous();
         *output = std::vector<float>(output_tensor.data_ptr<float>(),
                                      output_tensor.data_ptr<float>() + output_tensor.numel());
         *output_size = std::vector<long>(output_tensor.sizes().data(),
                                          output_tensor.sizes().data() + output_tensor.sizes().size());
         return true;
-    } catch (...) {
-        return false;
     }
+    tryOrPassInter { return false; }
 }
 
 bool yukarin_sa_forward(int length, long *vowel_phoneme_list, long *consonant_phoneme_list, long *start_accent_list,
                         long *end_accent_list, long *start_accent_phrase_list, long *end_accent_phrase_list,
                         long *speaker_id, std::vector<float> *output, std::vector<long> *output_size) {
-    try {
+    tryOrPassStart {
         std::vector<torch::jit::IValue> inputs = {
             array_to_tensor(vowel_phoneme_list, {1, length}, torch::kInt64),
             array_to_tensor(consonant_phoneme_list, {1, length}, torch::kInt64),
@@ -63,32 +79,30 @@ bool yukarin_sa_forward(int length, long *vowel_phoneme_list, long *consonant_ph
             array_to_tensor(end_accent_phrase_list, {1, length}, torch::kInt64),
             array_to_tensor(speaker_id, {1}, torch::kInt64),
         };
-        auto output_tensor = yukarin_sa_forwarder.forward(inputs).toTensor().contiguous();
+        auto output_tensor = yukarin_sa_forwarder.forward(inputs).toTensor().cpu().contiguous();
         *output = std::vector<float>(output_tensor.data_ptr<float>(),
                                      output_tensor.data_ptr<float>() + output_tensor.numel());
         *output_size = std::vector<long>(output_tensor.sizes().data(),
                                          output_tensor.sizes().data() + output_tensor.sizes().size());
         return true;
-    } catch (...) {
-        return false;
     }
+    tryOrPassInter { return false; }
 }
 
 bool decode_forward(int length, int phoneme_size, std::vector<float *> f0_list, std::vector<float *> phoneme_list,
                     long *speaker_id, std::vector<float> *output, std::vector<long> *output_size) {
-    try {
+    tryOrPassStart {
         std::vector<torch::jit::IValue> inputs = {
             arrays_to_tensors(f0_list, {length, 1}, torch::kFloat32),
             arrays_to_tensors(phoneme_list, {length, phoneme_size}, torch::kFloat32),
             array_to_tensor(speaker_id, {1}, torch::kInt64),
         };
-        auto output_tensor = decode_forwarder.forward(inputs).toTensor().contiguous();
+        auto output_tensor = decode_forwarder.forward(inputs).toTensor().cpu().contiguous();
         *output = std::vector<float>(output_tensor.data_ptr<float>(),
                                      output_tensor.data_ptr<float>() + output_tensor.numel());
         *output_size = std::vector<long>(output_tensor.sizes().data(),
                                          output_tensor.sizes().data() + output_tensor.sizes().size());
         return true;
-    } catch (...) {
-        return false;
     }
+    tryOrPassInter { return false; }
 }

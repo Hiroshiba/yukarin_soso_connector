@@ -35,6 +35,7 @@ class Forwarder:
         yukarin_soso_model_dir: Optional[Path],
         yukarin_sosoa_model_dir: Optional[Path],
         hifigan_model_dir: Path,
+        hifigan_model_iteration: Optional[str],
         use_gpu: bool,
     ):
         super().__init__()
@@ -132,7 +133,12 @@ class Forwarder:
 
         hifi_gan_predictor = HifiGanPredictor(vocoder_model_config).to(device)
         checkpoint_dict = torch.load(
-            get_predictor_model_path(hifigan_model_dir, prefix="g_", postfix=""),
+            get_predictor_model_path(
+                hifigan_model_dir,
+                iteration=hifigan_model_iteration,
+                prefix="g_",
+                postfix="",
+            ),
             map_location=device,
         )
         hifi_gan_predictor.load_state_dict(checkpoint_dict["generator"])

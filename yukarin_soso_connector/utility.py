@@ -11,7 +11,7 @@ def extract_number(f):
 
 def get_predictor_model_path(
     model_dir: Path,
-    iteration: int = None,
+    iteration: str = None,
     prefix: str = "predictor_",
     postfix: str = ".pth",
 ):
@@ -19,7 +19,7 @@ def get_predictor_model_path(
         paths = model_dir.glob(prefix + "*" + postfix)
         model_path = list(sorted(paths, key=extract_number))[-1]
     else:
-        model_path = model_dir / (prefix + "{}.pth".format(iteration))
+        model_path = model_dir / (prefix + iteration + postfix)
         assert model_path.exists()
     return model_path
 

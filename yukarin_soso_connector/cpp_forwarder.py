@@ -94,12 +94,14 @@ class CppForwarder:
             for i, p in enumerate(phoneme_str_list)
         ]
         phoneme_data_list = self.yukarin_s_phoneme_class.convert(phoneme_data_list)
-        phoneme_list_s = numpy.array([p.phoneme_id for p in phoneme_data_list])
+        phoneme_list_s = numpy.array(
+            [p.phoneme_id for p in phoneme_data_list], dtype=numpy.int64
+        )
 
         phoneme_length = self.yukarin_s_forwarder(
             length=len(phoneme_list_s),
             phoneme_list=numpy.ascontiguousarray(phoneme_list_s),
-            speaker_id=numpy.ascontiguousarray(f0_speaker_id),
+            speaker_id=numpy.array(f0_speaker_id, dtype=numpy.int64).reshape(-1),
         )
         phoneme_length[0] = phoneme_length[-1] = 0.1
         phoneme_length = numpy.round(phoneme_length * rate) / rate
@@ -111,16 +113,21 @@ class CppForwarder:
             vowel_indexes_data,
         ) = split_mora(phoneme_data_list)
 
-        vowel_indexes = numpy.array(vowel_indexes_data)
+        vowel_indexes = numpy.array(vowel_indexes_data, dtype=numpy.int64)
 
         vowel_phoneme_list = numpy.array(
-            [p.phoneme_id for p in vowel_phoneme_data_list]
+            [p.phoneme_id for p in vowel_phoneme_data_list], dtype=numpy.int64
         )
         consonant_phoneme_list = numpy.array(
-            [p.phoneme_id if p is not None else -1 for p in consonant_phoneme_data_list]
+            [
+                p.phoneme_id if p is not None else -1
+                for p in consonant_phoneme_data_list
+            ],
+            dtype=numpy.int64,
         )
         phoneme_length_sa = numpy.array(
-            [a.sum() for a in numpy.split(phoneme_length, vowel_indexes[:-1] + 1)]
+            [a.sum() for a in numpy.split(phoneme_length, vowel_indexes[:-1] + 1)],
+            dtype=numpy.float32,
         )
 
         f0_list = self.yukarin_sa_forwarder(
@@ -133,7 +140,7 @@ class CppForwarder:
                 numpy.newaxis
             ],
             end_accent_phrase_list=end_accent_phrase_list[vowel_indexes][numpy.newaxis],
-            speaker_id=numpy.array(speaker_id).reshape(-1),
+            speaker_id=numpy.array(speaker_id, dtype=numpy.int64).reshape(-1),
         )[0]
         f0_list += f0_correct
 
@@ -142,10 +149,10 @@ class CppForwarder:
                 f0_list[i] = 0
 
         phoneme = numpy.repeat(
-            phoneme_list_s, numpy.round(phoneme_length * rate).astype(numpy.int32)
+            phoneme_list_s, numpy.round(phoneme_length * rate).astype(numpy.int64)
         )
         f0 = numpy.repeat(
-            f0_list, numpy.round(phoneme_length_sa * rate).astype(numpy.int32)
+            f0_list, numpy.round(phoneme_length_sa * rate).astype(numpy.int64)
         )
 
         # forward decode
@@ -162,7 +169,7 @@ class CppForwarder:
                     )
                     for p in phoneme
                 ],
-                dtype=numpy.int32,
+                dtype=numpy.int64,
             )
 
         array = numpy.zeros(
@@ -178,8 +185,8 @@ class CppForwarder:
         wave = self.decode_forwarder(
             length=phoneme.shape[0],
             phoneme_size=phoneme.shape[1],
-            f0_list=[f0[:, numpy.newaxis]],
-            phoneme_list=[phoneme],
-            speaker_id=numpy.array(speaker_id).reshape(-1),
+            f0=f0[:, numpy.newaxis],
+            phoneme=phoneme,
+            speaker_id=numpy.array(speaker_id, dtype=numpy.int64).reshape(-1),
         )
         return wave

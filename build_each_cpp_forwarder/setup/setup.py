@@ -1,3 +1,4 @@
+import platform
 from distutils.core import setup
 from distutils.extension import Extension
 
@@ -11,7 +12,7 @@ ext_modules = [
         sources=["each_cpp_forwarder.pyx"],
         language="c++",
         libraries=["each_cpp_forwarder"],
-        # library_dirs=['/path/to/dll'],
+        library_dirs=["../build/Debug"] if platform.system() == "Windows" else [],
     )
 ]
 
@@ -20,7 +21,6 @@ setup(
     cmdclass={"build_ext": build_ext},
     ext_modules=cythonize(ext_modules),
     include_dirs=[
-        # '/path/to/header',
         numpy.get_include(),
     ],
 )

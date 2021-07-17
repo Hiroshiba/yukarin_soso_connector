@@ -2,8 +2,6 @@ cimport numpy
 import numpy
 
 from libcpp cimport bool
-from libcpp.vector cimport vector
-from libcpp.string cimport string
 
 cpdef initialize(
     str yukarin_s_forwarder_path,
@@ -12,32 +10,30 @@ cpdef initialize(
     bool use_gpu
 ):
     cdef bool success = c_initialize(
-        <string> yukarin_s_forwarder_path.encode(),
-        <string> yukarin_sa_forwarder_path.encode(),
-        <string> decode_forwarder_path.encode(),
+        yukarin_s_forwarder_path.encode(),
+        yukarin_sa_forwarder_path.encode(),
+        decode_forwarder_path.encode(),
         use_gpu
     )
     assert success
 
-cpdef yukarin_s_forward(
+cpdef numpy.ndarray[numpy.float32_t, ndim=1] yukarin_s_forward(
     int length,
     numpy.ndarray[numpy.int64_t, ndim=1] phoneme_list,
     numpy.ndarray[numpy.int64_t, ndim=1] speaker_id,
 ):
-    cdef vector[float] output
-    cdef vector[long] output_size
+    cdef numpy.ndarray[numpy.float32_t, ndim=1] output = numpy.zeros((length,), dtype=numpy.float32)
     cdef bool success = c_yukarin_s_forward(
         length,
         <long*> phoneme_list.data,
         <long*> speaker_id.data,
-        &output,
-        &output_size,
+        <float*> output.data,
     )
     assert success
-    return numpy.asarray(output).reshape(output_size)
+    return output
 
 
-cpdef yukarin_sa_forward(
+cpdef numpy.ndarray[numpy.float32_t, ndim=2] yukarin_sa_forward(
     int length,
     numpy.ndarray[numpy.int64_t, ndim=2] vowel_phoneme_list,
     numpy.ndarray[numpy.int64_t, ndim=2] consonant_phoneme_list,
@@ -47,8 +43,7 @@ cpdef yukarin_sa_forward(
     numpy.ndarray[numpy.int64_t, ndim=2] end_accent_phrase_list,
     numpy.ndarray[numpy.int64_t, ndim=1] speaker_id,
 ):
-    cdef vector[float] output
-    cdef vector[long] output_size
+    cdef numpy.ndarray[numpy.float32_t, ndim=2] output = numpy.empty((len(speaker_id), length,), dtype=numpy.float32)
     cdef bool success = c_yukarin_sa_forward(
         length,
         <long*> vowel_phoneme_list.data,
@@ -58,40 +53,26 @@ cpdef yukarin_sa_forward(
         <long*> start_accent_phrase_list.data,
         <long*> end_accent_phrase_list.data,
         <long*> speaker_id.data,
-        &output,
-        &output_size,
+        <float*> output.data,
     )
     assert success
-    return numpy.asarray(output, numpy.float32).reshape(output_size)
+    return output
 
-cpdef decode_forward(
+cpdef numpy.ndarray[numpy.float32_t, ndim=1] decode_forward(
     int length,
     int phoneme_size,
-    list f0_list,
-    list phoneme_list,
+    numpy.ndarray[numpy.float32_t, ndim=2] f0,
+    numpy.ndarray[numpy.float32_t, ndim=2] phoneme,
     numpy.ndarray[numpy.int64_t, ndim=1] speaker_id,
 ):
-    cdef int i
-    cdef numpy.ndarray[numpy.float32_t, ndim=2] tmp
-    cdef vector[float *] f0_vector
-    cdef vector[float *] phoneme_vector
-    for i in range(len(f0_list)):
-        tmp = f0_list[i]
-        f0_vector.push_back(<float *> tmp.data)
-    for i in range(len(phoneme_list)):
-        tmp = phoneme_list[i]
-        phoneme_vector.push_back(<float *> tmp.data)
-
-    cdef vector[float] output
-    cdef vector[long] output_size
+    cdef numpy.ndarray[numpy.float32_t, ndim=1] output = numpy.empty((length*256,), dtype=numpy.float32)
     cdef bool success = c_decode_forward(
         length,
         phoneme_size,
-        f0_vector,
-        phoneme_vector,
+        <float*> f0.data,
+        <float*> phoneme.data,
         <long*> speaker_id.data,
-        &output,
-        &output_size,
+        <float*> output.data,
     )
     assert success
-    return numpy.asarray(output, numpy.float32).reshape(output_size)
+    return output

@@ -12,7 +12,7 @@ ext_modules = [
         sources=["each_cpp_forwarder.pyx"],
         language="c++",
         libraries=["each_cpp_forwarder"],
-        library_dirs=["../build/Debug"] if platform.system() == "Windows" else [],
+        library_dirs=["../build/Release"] if platform.system() == "Windows" else [],
     )
 ]
 

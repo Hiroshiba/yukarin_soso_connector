@@ -1,9 +1,13 @@
 from typing import List, Optional
 
 import numpy
-from acoustic_feature_extractor.data.phoneme import BasePhoneme, JvsPhoneme, OjtPhoneme
-from acoustic_feature_extractor.data.sampling_data import SamplingData
 
+from yukarin_soso_connector.acoustic_feature_extractor import (
+    BasePhoneme,
+    JvsPhoneme,
+    OjtPhoneme,
+    SamplingData,
+)
 from yukarin_soso_connector.full_context_label import extract_full_context_label
 
 unvoiced_mora_phoneme_list = ["A", "I", "U", "E", "O", "cl", "pau"]

@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from typing import List
 
 import torch
 
@@ -29,3 +30,9 @@ def remove_weight_norm(m):
         torch.nn.utils.remove_weight_norm(m)
     except ValueError:
         pass
+
+
+def select_embedding(embedding: torch.nn.Embedding, indexes: List[int]):
+    return torch.nn.Embedding(
+        len(indexes), embedding.embedding_dim, _weight=embedding.weight[indexes]
+    )

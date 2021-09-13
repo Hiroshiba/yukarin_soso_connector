@@ -18,4 +18,5 @@ class JitYukarinS(nn.Module):
         output = self.predictor(
             phoneme_list=phoneme_list.unsqueeze(0), speaker_id=speaker_id
         )[0]
+        output = torch.maximum(output, torch.ones_like(output) * 0.01)
         return output

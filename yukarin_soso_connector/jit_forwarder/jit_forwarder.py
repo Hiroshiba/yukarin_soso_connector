@@ -183,7 +183,7 @@ class JitForwarder(nn.Module):
             .cpu()
             .numpy()
         )
-        phoneme_length[0] = phoneme_length[-1] = 0.1
+        phoneme_length[0] = phoneme_length[-1] = 0.5
         phoneme_length = numpy.round(phoneme_length * rate) / rate
 
         # forward yukarin sa

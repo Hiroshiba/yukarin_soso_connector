@@ -5,12 +5,6 @@ from typing import Optional, Type
 import numpy
 import torch
 import yaml
-from acoustic_feature_extractor.data.phoneme import (
-    BasePhoneme,
-    JvsPhoneme,
-    phoneme_type_to_class,
-)
-from acoustic_feature_extractor.data.sampling_data import SamplingData
 from hifi_gan.env import AttrDict
 from hifi_gan.models import Generator as HifiGanPredictor
 from yukarin_s.config import Config as ConfigS
@@ -23,6 +17,12 @@ from yukarin_soso.generator import Generator as YukarinSosoGenerator
 from yukarin_sosoa.config import Config as ConfigSosoa
 from yukarin_sosoa.generator import Generator as YukarinSosoaGenerator
 
+from acoustic_feature_extractor.data.phoneme import (
+    BasePhoneme,
+    JvsPhoneme,
+    phoneme_type_to_class,
+)
+from acoustic_feature_extractor.data.sampling_data import SamplingData
 from yukarin_soso_connector.full_context_label import extract_full_context_label
 from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
 
@@ -213,7 +213,7 @@ class Forwarder:
         phoneme_length = self.yukarin_s_generator.generate(
             phoneme_list=phoneme_list_s, speaker_id=f0_speaker_id
         )
-        phoneme_length[0] = phoneme_length[-1] = 0.1
+        phoneme_length[0] = phoneme_length[-1] = 0.5
         phoneme_length = numpy.round(phoneme_length * rate) / rate
 
         # forward yukarin sa

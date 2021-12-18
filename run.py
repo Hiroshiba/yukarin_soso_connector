@@ -34,7 +34,7 @@ def run(
     )
 
     for text, speaker_id in tqdm(list(product(texts, speaker_ids))):
-        wave = forwarder.forward(
+        wave, _ = forwarder.forward(
             text=text,
             speaker_id=speaker_id,
             f0_speaker_id=f0_speaker_id if f0_speaker_id is not None else speaker_id,

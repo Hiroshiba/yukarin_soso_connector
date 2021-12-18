@@ -216,6 +216,8 @@ class Forwarder:
         phoneme_length[0] = phoneme_length[-1] = 0.5
         phoneme_length = numpy.round(phoneme_length * rate) / rate
 
+        phoneme_length[phoneme_length < 0.01] = 0.01
+
         # forward yukarin sa
         (
             consonant_phoneme_data_list,
@@ -301,8 +303,11 @@ class Forwarder:
 
         # forward hifi gan
         x = spec.T
-        wave = self.hifi_gan_predictor(
-            torch.FloatTensor(x).unsqueeze(0).to(self.device)
-        ).squeeze()
+        wave = (
+            self.hifi_gan_predictor(torch.FloatTensor(x).unsqueeze(0).to(self.device))
+            .squeeze()
+            .cpu()
+            .numpy()
+        )
 
-        return wave.cpu().numpy()
+        return wave, (phoneme_length, f0_list, spec)

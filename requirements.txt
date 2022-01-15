@@ -8,3 +8,4 @@ git+https://github.com/Hiroshiba/yukarin_soso
 git+https://github.com/Hiroshiba/yukarin_sosoa
 git+https://github.com/Hiroshiba/hifi-gan
 git+https://github.com/r9y9/pyopenjtalk
+git+https://github.com/Hiroshiba/vits

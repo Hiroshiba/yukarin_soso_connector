@@ -14,8 +14,9 @@ def run(
     yukarin_sa_model_dir: Path,
     yukarin_soso_model_dir: Optional[Path],
     yukarin_sosoa_model_dir: Optional[Path],
-    hifigan_model_dir: Path,
+    hifigan_model_dir: Optional[Path],
     hifigan_model_iteration: Optional[str],
+    vits_model_dir: Optional[Path],
     output_dir: Path,
     use_gpu: bool,
     texts: List[str],
@@ -30,6 +31,7 @@ def run(
         yukarin_sosoa_model_dir=yukarin_sosoa_model_dir,
         hifigan_model_dir=hifigan_model_dir,
         hifigan_model_iteration=hifigan_model_iteration,
+        vits_model_dir=vits_model_dir,
         use_gpu=use_gpu,
     )
 
@@ -52,8 +54,9 @@ if __name__ == "__main__":
     parser.add_argument("--yukarin_sa_model_dir", type=Path, required=True)
     parser.add_argument("--yukarin_soso_model_dir", type=Path)
     parser.add_argument("--yukarin_sosoa_model_dir", type=Path)
-    parser.add_argument("--hifigan_model_dir", type=Path, required=True)
+    parser.add_argument("--hifigan_model_dir", type=Path)
     parser.add_argument("--hifigan_model_iteration")
+    parser.add_argument("--vits_model_dir", type=Path)
     parser.add_argument("--output_dir", type=Path, default=Path("./"))
     parser.add_argument("--use_gpu", action="store_true")
     parser.add_argument("--texts", nargs="+", required=True)

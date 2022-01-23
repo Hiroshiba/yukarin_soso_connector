@@ -7,10 +7,6 @@ import torch
 import yaml
 from hifi_gan.env import AttrDict
 from hifi_gan.models import Generator as HifiGanPredictor
-from vits import commons as vits_commons
-from vits import utils as vits_utils
-from vits.models import SynthesizerTrn
-from vits.text.symbols import symbols as vits_symbols
 from yukarin_s.config import Config as ConfigS
 from yukarin_s.generator import Generator as GeneratorS
 from yukarin_sa.config import Config as ConfigSa
@@ -21,11 +17,7 @@ from yukarin_soso.generator import Generator as YukarinSosoGenerator
 from yukarin_sosoa.config import Config as ConfigSosoa
 from yukarin_sosoa.generator import Generator as YukarinSosoaGenerator
 
-from acoustic_feature_extractor.data.phoneme import (
-    BasePhoneme,
-    JvsPhoneme,
-    phoneme_type_to_class,
-)
+from acoustic_feature_extractor.data.phoneme import BasePhoneme, phoneme_type_to_class
 from acoustic_feature_extractor.data.sampling_data import SamplingData
 from yukarin_soso_connector.full_context_label import extract_full_context_label
 from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
@@ -152,6 +144,10 @@ class Forwarder:
 
         # vits
         if vits_model_dir is not None:
+            from vits import utils as vits_utils
+            from vits.models import SynthesizerTrn
+            from vits.text.symbols import symbols as vits_symbols
+
             device = yukarin_s_generator.device
             hps = vits_utils.get_hparams_from_file(vits_model_dir / "config.json")
 
@@ -245,8 +241,6 @@ class Forwarder:
             phoneme_list=phoneme_list_s, speaker_id=f0_speaker_id
         )
         phoneme_length[0] = phoneme_length[-1] = 0.5
-        phoneme_length = numpy.round(phoneme_length * rate) / rate
-
         phoneme_length[phoneme_length < 0.01] = 0.01
 
         # forward yukarin sa
@@ -328,6 +322,8 @@ class Forwarder:
             )
 
         else:
+            from vits import commons as vits_commons
+
             x_tst = (
                 torch.LongTensor(vits_commons.intersperse(phoneme_list_s + 1, 0))
                 .unsqueeze(0)
@@ -343,18 +339,24 @@ class Forwarder:
                 .to(self.device)
             )
 
-            x_tst_lengths = torch.LongTensor(x_tst.shape[1]).to(self.device)
+            array = numpy.ceil(phoneme_length * 128 / 2)
+            length = (
+                torch.FloatTensor(vits_commons.intersperse(array, 0))
+                .unsqueeze(0)
+                .unsqueeze(1)
+                .to(self.device)
+            )
+
             sid = torch.LongTensor([speaker_id]).to(self.device)
             wave = (
-                self.vits_predictor.infer(
+                self.vits_predictor.infer1(
                     x_tst,
                     x1,
-                    x_tst_lengths,
+                    length=length,
                     sid=sid,
-                    noise_scale=0.667,
-                    noise_scale_w=0.8,
-                    length_scale=1,
-                )[0][0, 0]
+                    noise_scale=0,
+                    noise_scale_w=0,
+                )[0, 0]
                 .data.cpu()
                 .float()
                 .numpy()

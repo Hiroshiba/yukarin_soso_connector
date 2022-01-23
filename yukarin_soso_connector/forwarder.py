@@ -181,8 +181,6 @@ class Forwarder:
     def forward(
         self, text: str, speaker_id: int, f0_speaker_id: int, f0_correct: float = 0
     ):
-        rate = 200
-
         # phoneme
         utterance = extract_full_context_label(text)
         label_data_list = utterance.phonemes
@@ -280,12 +278,16 @@ class Forwarder:
                 f0_list[i] = 0
 
         if not self.vits_predictor:
+            rate = 24000 / 256
+
             phoneme = numpy.repeat(
                 phoneme_list_s, numpy.round(phoneme_length * rate).astype(numpy.int32)
             )
             f0 = numpy.repeat(
                 f0_list, numpy.round(phoneme_length_sa * rate).astype(numpy.int32)
             )
+            phoneme = phoneme[:min(len(phoneme), len(f0))]
+            f0 = f0[:min(len(phoneme), len(f0))]
 
             # forward yukarin soso or sosoa
             array = numpy.zeros(
@@ -293,9 +295,6 @@ class Forwarder:
             )
             array[numpy.arange(len(phoneme)), phoneme] = 1
             phoneme = array
-
-            f0 = SamplingData(array=f0, rate=rate).resample(24000 / 256)
-            phoneme = SamplingData(array=phoneme, rate=rate).resample(24000 / 256)
 
             if self.yukarin_soso_generator is not None:
                 spec = self.yukarin_soso_generator.generate(

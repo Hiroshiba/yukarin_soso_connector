@@ -55,7 +55,7 @@ class JitForwarder(nn.Module):
             self.device = forwarder.device
 
             # yukarin_s
-            self.yukarin_s_phoneme_class = forwarder.yukarin_s_phoneme_class
+            self.phoneme_class = forwarder.phoneme_class
             self.yukarin_s_forwarder = torch.jit.script(
                 JitYukarinS(forwarder.yukarin_s_generator.predictor)
             )
@@ -68,7 +68,6 @@ class JitForwarder(nn.Module):
             print("--- yukarin_sa forwarder ---\n", self.yukarin_sa_forwarder.code)
 
             # yukarin_soso or yukarin_sosoa
-            self.yukarin_soso_phoneme_class = forwarder.yukarin_soso_phoneme_class
             self.yukarin_soso_forwarder = None
             assert forwarder.yukarin_soso_generator is None
 
@@ -104,8 +103,7 @@ class JitForwarder(nn.Module):
             self.yukarin_sa_forwarder = yukarin_sa_forwarder
             self.yukarin_soso_forwarder = None
             self.decode_forwarder = decode_forwarder
-            self.yukarin_s_phoneme_class = OjtPhoneme
-            self.yukarin_soso_phoneme_class = OjtPhoneme
+            self.phoneme_class = OjtPhoneme
             self.device = device
 
     def to_tensor(self, array: Union[Tensor, numpy.ndarray, Any]):
@@ -166,13 +164,13 @@ class JitForwarder(nn.Module):
         end_accent_phrase_list = numpy.array(end_accent_phrase_list, dtype=numpy.int64)
 
         # forward yukarin s
-        assert self.yukarin_s_phoneme_class is not None
+        assert self.phoneme_class is not None
 
         phoneme_data_list = [
-            self.yukarin_s_phoneme_class(phoneme=p, start=i, end=i + 1)
+            self.phoneme_class(phoneme=p, start=i, end=i + 1)
             for i, p in enumerate(phoneme_str_list)
         ]
-        phoneme_data_list = self.yukarin_s_phoneme_class.convert(phoneme_data_list)
+        phoneme_data_list = self.phoneme_class.convert(phoneme_data_list)
         phoneme_list_s = numpy.array([p.phoneme_id for p in phoneme_data_list])
 
         phoneme_length = (
@@ -242,24 +240,10 @@ class JitForwarder(nn.Module):
         )
 
         # forward decode
-        assert self.yukarin_soso_phoneme_class is not None
-
-        if (
-            self.yukarin_soso_phoneme_class is not JvsPhoneme
-            and self.yukarin_soso_phoneme_class is not self.yukarin_s_phoneme_class
-        ):
-            phoneme = numpy.array(
-                [
-                    self.yukarin_soso_phoneme_class.phoneme_list.index(
-                        JvsPhoneme.phoneme_list[p]
-                    )
-                    for p in phoneme
-                ],
-                dtype=numpy.int32,
-            )
+        assert self.phoneme_class is not None
 
         array = numpy.zeros(
-            (len(phoneme), self.yukarin_soso_phoneme_class.num_phoneme),
+            (len(phoneme), self.phoneme_class.num_phoneme),
             dtype=numpy.float32,
         )
         array[numpy.arange(len(phoneme)), phoneme] = 1

@@ -39,6 +39,7 @@ def run(
             yukarin_sosoa_model_dir=yukarin_sosoa_model_dir,
             hifigan_model_dir=hifigan_model_dir,
             hifigan_model_iteration=hifigan_model_iteration,
+            vits_model_dir=None,
             use_gpu=use_gpu,
         )
         python_forwarder.yukarin_s_generator.predictor.speaker_embedder = (

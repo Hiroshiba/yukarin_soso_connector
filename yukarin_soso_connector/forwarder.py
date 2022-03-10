@@ -12,6 +12,8 @@ from yukarin_s.generator import Generator as GeneratorS
 from yukarin_sa.config import Config as ConfigSa
 from yukarin_sa.dataset import split_mora, unvoiced_mora_phoneme_list
 from yukarin_sa.generator import Generator as GeneratorSa
+from yukarin_saa.config import Config as ConfigSaa
+from yukarin_saa.generator import Generator as GeneratorSaa
 from yukarin_soso.config import Config as ConfigSoso
 from yukarin_soso.generator import Generator as YukarinSosoGenerator
 from yukarin_sosoa.config import Config as ConfigSosoa
@@ -27,7 +29,8 @@ class Forwarder:
     def __init__(
         self,
         yukarin_s_model_dir: Path,
-        yukarin_sa_model_dir: Path,
+        yukarin_sa_model_dir: Optional[Path],
+        yukarin_saa_model_dir: Optional[Path],
         yukarin_soso_model_dir: Optional[Path],
         yukarin_sosoa_model_dir: Optional[Path],
         hifigan_model_dir: Optional[Path],
@@ -55,22 +58,50 @@ class Forwarder:
         self.yukarin_s_generator = yukarin_s_generator
         print("yukarin_s loaded!")
 
-        # yukarin_sa
-        with yukarin_sa_model_dir.joinpath("config.yaml").open() as f:
-            config = ConfigSa.from_dict(yaml.safe_load(f))
+        # yukarin_sa or yukarin_saa
+        if yukarin_sa_model_dir is not None:
+            with yukarin_sa_model_dir.joinpath("config.yaml").open() as f:
+                config = ConfigSa.from_dict(yaml.safe_load(f))
 
-        yukarin_sa_generator = GeneratorSa(
-            config=config,
-            predictor=get_predictor_model_path(yukarin_sa_model_dir),
-            use_gpu=use_gpu,
-        )
-        yukarin_sa_generator.predictor.apply(remove_weight_norm)
+            yukarin_sa_generator = GeneratorSa(
+                config=config,
+                predictor=get_predictor_model_path(yukarin_sa_model_dir),
+                use_gpu=use_gpu,
+            )
+            yukarin_sa_generator.predictor.apply(remove_weight_norm)
 
-        assert self.phoneme_class is phoneme_type_to_class[config.dataset.phoneme_type]
+            assert (
+                self.phoneme_class is phoneme_type_to_class[config.dataset.phoneme_type]
+            )
 
-        assert yukarin_sa_generator.config.dataset.f0_process_mode == "voiced_mora"
-        self.yukarin_sa_generator = yukarin_sa_generator
-        print("yukarin_sa loaded!")
+            assert yukarin_sa_generator.config.dataset.f0_process_mode == "voiced_mora"
+            self.yukarin_sa_generator = yukarin_sa_generator
+            print("yukarin_sa loaded!")
+
+        else:
+            self.yukarin_sa_generator = None
+
+        if yukarin_saa_model_dir is not None:
+            with yukarin_saa_model_dir.joinpath("config.yaml").open() as f:
+                config = ConfigSaa.from_dict(yaml.safe_load(f))
+
+            yukarin_saa_generator = GeneratorSaa(
+                config=config,
+                predictor=get_predictor_model_path(yukarin_saa_model_dir),
+                use_gpu=use_gpu,
+            )
+            yukarin_saa_generator.predictor.apply(remove_weight_norm)
+
+            assert (
+                self.phoneme_class is phoneme_type_to_class[config.dataset.phoneme_type]
+            )
+
+            assert yukarin_saa_generator.config.dataset.f0_process_mode == "voiced_mora"
+            self.yukarin_saa_generator = yukarin_saa_generator
+            print("yukarin_saa loaded!")
+
+        else:
+            self.yukarin_saa_generator = None
 
         # yukarin_soso or yukarin_sosoa
         if yukarin_soso_model_dir is not None:
@@ -241,7 +272,7 @@ class Forwarder:
         phoneme_length[0] = phoneme_length[-1] = 0.5
         phoneme_length[phoneme_length < 0.01] = 0.01
 
-        # forward yukarin sa
+        # forward yukarin sa or saa
         (
             consonant_phoneme_data_list,
             vowel_phoneme_data_list,
@@ -260,17 +291,30 @@ class Forwarder:
             [a.sum() for a in numpy.split(phoneme_length, vowel_indexes[:-1] + 1)]
         )
 
-        f0_list = self.yukarin_sa_generator.generate(
-            vowel_phoneme_list=vowel_phoneme_list[numpy.newaxis],
-            consonant_phoneme_list=consonant_phoneme_list[numpy.newaxis],
-            start_accent_list=start_accent_list[vowel_indexes][numpy.newaxis],
-            end_accent_list=end_accent_list[vowel_indexes][numpy.newaxis],
-            start_accent_phrase_list=start_accent_phrase_list[vowel_indexes][
-                numpy.newaxis
-            ],
-            end_accent_phrase_list=end_accent_phrase_list[vowel_indexes][numpy.newaxis],
-            speaker_id=f0_speaker_id,
-        )[0]
+        if self.yukarin_sa_generator is not None:
+            f0_list = self.yukarin_sa_generator.generate(
+                vowel_phoneme_list=vowel_phoneme_list[numpy.newaxis],
+                consonant_phoneme_list=consonant_phoneme_list[numpy.newaxis],
+                start_accent_list=start_accent_list[vowel_indexes][numpy.newaxis],
+                end_accent_list=end_accent_list[vowel_indexes][numpy.newaxis],
+                start_accent_phrase_list=start_accent_phrase_list[vowel_indexes][
+                    numpy.newaxis
+                ],
+                end_accent_phrase_list=end_accent_phrase_list[vowel_indexes][
+                    numpy.newaxis
+                ],
+                speaker_id=f0_speaker_id,
+            )[0]
+        else:
+            f0_list = self.yukarin_saa_generator.generate(
+                vowel_phoneme_list=[vowel_phoneme_list],
+                consonant_phoneme_list=[consonant_phoneme_list],
+                start_accent_list=[start_accent_list[vowel_indexes]],
+                end_accent_list=[end_accent_list[vowel_indexes]],
+                start_accent_phrase_list=[start_accent_phrase_list[vowel_indexes]],
+                end_accent_phrase_list=[end_accent_phrase_list[vowel_indexes]],
+                speaker_id=numpy.array(f0_speaker_id).reshape(-1),
+            )[0]
         f0_list += f0_correct
 
         for i, p in enumerate(vowel_phoneme_data_list):
@@ -286,8 +330,8 @@ class Forwarder:
             f0 = numpy.repeat(
                 f0_list, numpy.round(phoneme_length_sa * rate).astype(numpy.int32)
             )
-            phoneme = phoneme[:min(len(phoneme), len(f0))]
-            f0 = f0[:min(len(phoneme), len(f0))]
+            phoneme = phoneme[: min(len(phoneme), len(f0))]
+            f0 = f0[: min(len(phoneme), len(f0))]
 
             # forward yukarin soso or sosoa
             array = numpy.zeros(
@@ -321,6 +365,7 @@ class Forwarder:
             )
 
         else:
+            # forward vits
             from vits import commons as vits_commons
 
             x_tst = (

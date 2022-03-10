@@ -11,7 +11,8 @@ from yukarin_soso_connector.forwarder import Forwarder
 
 def run(
     yukarin_s_model_dir: Path,
-    yukarin_sa_model_dir: Path,
+    yukarin_sa_model_dir: Optional[Path],
+    yukarin_saa_model_dir: Optional[Path],
     yukarin_soso_model_dir: Optional[Path],
     yukarin_sosoa_model_dir: Optional[Path],
     hifigan_model_dir: Optional[Path],
@@ -27,6 +28,7 @@ def run(
     forwarder = Forwarder(
         yukarin_s_model_dir=yukarin_s_model_dir,
         yukarin_sa_model_dir=yukarin_sa_model_dir,
+        yukarin_saa_model_dir=yukarin_saa_model_dir,
         yukarin_soso_model_dir=yukarin_soso_model_dir,
         yukarin_sosoa_model_dir=yukarin_sosoa_model_dir,
         hifigan_model_dir=hifigan_model_dir,
@@ -51,7 +53,8 @@ def run(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--yukarin_s_model_dir", type=Path, required=True)
-    parser.add_argument("--yukarin_sa_model_dir", type=Path, required=True)
+    parser.add_argument("--yukarin_sa_model_dir", type=Path)
+    parser.add_argument("--yukarin_saa_model_dir", type=Path)
     parser.add_argument("--yukarin_soso_model_dir", type=Path)
     parser.add_argument("--yukarin_sosoa_model_dir", type=Path)
     parser.add_argument("--hifigan_model_dir", type=Path)

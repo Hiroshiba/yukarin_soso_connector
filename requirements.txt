@@ -3,6 +3,7 @@ pyyaml
 git+https://github.com/Hiroshiba/acoustic_feature_extractor
 git+https://github.com/Hiroshiba/yukarin_s
 git+https://github.com/Hiroshiba/yukarin_sa
+git+https://github.com/Hiroshiba/yukarin_saa
 git+https://github.com/Hiroshiba/yukarin_sos
 git+https://github.com/Hiroshiba/yukarin_soso
 git+https://github.com/Hiroshiba/yukarin_sosoa

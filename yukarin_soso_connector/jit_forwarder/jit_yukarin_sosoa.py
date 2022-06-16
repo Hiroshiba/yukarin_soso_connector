@@ -54,17 +54,12 @@ class JitYukarinSosoa(nn.Module):
 
     def forward(
         self,
-        f0_list: List[Tensor],
-        phoneme_list: List[Tensor],
-        speaker_id: Optional[Tensor] = None,
+        f0: Tensor,
+        phoneme: Tensor,
+        speaker_id: Tensor,
     ):
-        length_list = [f0.shape[0] for f0 in f0_list]
-
-        length = torch.tensor(length_list).to(f0_list[0].device)
-        f0 = pad_sequence(f0_list, batch_first=True)
-        phoneme = pad_sequence(phoneme_list, batch_first=True)
-
-        h = torch.cat((f0, phoneme), dim=2)  # (batch_size, length, ?)
+        h = torch.cat((f0, phoneme), dim=1)  # (length, ?)
+        h = h.unsqueeze(0)  # (batch_size, length, ?)
 
         if self.speaker_embedder is not None and speaker_id is not None:
             speaker_id = self.speaker_embedder(speaker_id)
@@ -76,9 +71,9 @@ class JitYukarinSosoa(nn.Module):
 
         h = self.pre(h)
 
-        mask = make_non_pad_mask(length).to(length.device).unsqueeze(-2)
+        mask = torch.ones(h.shape[:2], device=h.device)
         h, _ = self.encoder(h, mask)
 
         output1 = self.post(h)
         output2 = output1 + self.postnet(output1.transpose(1, 2)).transpose(1, 2)
-        return [output2[i, :l] for i, l in enumerate(length_list)]
+        return output2[0]

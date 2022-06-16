@@ -25,14 +25,14 @@ class JitDecodeForwarder(nn.Module):
 
     def forward(
         self,
-        f0_list: List[Tensor],
-        phoneme_list: List[Tensor],
-        speaker_id: Optional[Tensor] = None,
+        f0: Tensor,
+        phoneme: Tensor,
+        speaker_id: Tensor,
     ):
         # forward sosoa
         spec = self.yukarin_sosoa_forwarder(
-            f0_list=f0_list, phoneme_list=phoneme_list, speaker_id=speaker_id
-        )[0]
+            f0=f0, phoneme=phoneme, speaker_id=speaker_id
+        )
 
         # forward hifi gan
         x = spec.T
@@ -253,8 +253,8 @@ class JitForwarder(nn.Module):
         phoneme = SamplingData(array=phoneme, rate=rate).resample(24000 / 256)
 
         wave = self.decode_forwarder(
-            f0_list=[self.to_tensor(f0[:, numpy.newaxis])],
-            phoneme_list=[self.to_tensor(phoneme)],
+            f0=self.to_tensor(f0[:, numpy.newaxis]),
+            phoneme=self.to_tensor(phoneme),
             speaker_id=self.to_tensor(numpy.array(speaker_id).reshape(-1)),
         )
         return wave.cpu().numpy()

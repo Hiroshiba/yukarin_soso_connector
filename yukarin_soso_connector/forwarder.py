@@ -48,7 +48,7 @@ class Forwarder:
 
         yukarin_s_generator = GeneratorS(
             config=config,
-            predictor=get_predictor_model_path(yukarin_s_model_dir),
+            predictor=get_predictor_model_path(yukarin_s_model_dir, prefix="model"),
             use_gpu=use_gpu,
         )
         yukarin_s_generator.predictor.apply(remove_weight_norm)
@@ -65,7 +65,9 @@ class Forwarder:
 
             yukarin_sa_generator = GeneratorSa(
                 config=config,
-                predictor=get_predictor_model_path(yukarin_sa_model_dir),
+                predictor=get_predictor_model_path(
+                    yukarin_sa_model_dir, prefix="model"
+                ),
                 use_gpu=use_gpu,
             )
             yukarin_sa_generator.predictor.apply(remove_weight_norm)
@@ -87,7 +89,9 @@ class Forwarder:
 
             yukarin_saa_generator = GeneratorSaa(
                 config=config,
-                predictor=get_predictor_model_path(yukarin_saa_model_dir),
+                predictor=get_predictor_model_path(
+                    yukarin_saa_model_dir, prefix="model"
+                ),
                 use_gpu=use_gpu,
             )
             yukarin_saa_generator.predictor.apply(remove_weight_norm)
@@ -110,7 +114,9 @@ class Forwarder:
 
             yukarin_soso_generator = YukarinSosoGenerator(
                 config=config,
-                predictor=get_predictor_model_path(yukarin_soso_model_dir),
+                predictor=get_predictor_model_path(
+                    yukarin_soso_model_dir, prefix="model"
+                ),
                 use_gpu=use_gpu,
             )
             yukarin_soso_generator.predictor.apply(remove_weight_norm)
@@ -131,7 +137,9 @@ class Forwarder:
 
             yukarin_sosoa_generator = YukarinSosoaGenerator(
                 config=config,
-                predictor=get_predictor_model_path(yukarin_sosoa_model_dir),
+                predictor=get_predictor_model_path(
+                    yukarin_sosoa_model_dir, prefix="model"
+                ),
                 use_gpu=use_gpu,
             )
             yukarin_sosoa_generator.predictor.apply(remove_weight_norm)
@@ -158,7 +166,7 @@ class Forwarder:
                 get_predictor_model_path(
                     hifigan_model_dir,
                     iteration=hifigan_model_iteration,
-                    prefix="g_",
+                    prefix="model",
                     postfix="",
                 ),
                 map_location=device,

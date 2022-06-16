@@ -35,6 +35,7 @@ def run(
         python_forwarder = Forwarder(
             yukarin_s_model_dir=yukarin_s_model_dir,
             yukarin_sa_model_dir=yukarin_sa_model_dir,
+            yukarin_saa_model_dir=None,
             yukarin_soso_model_dir=yukarin_soso_model_dir,
             yukarin_sosoa_model_dir=yukarin_sosoa_model_dir,
             hifigan_model_dir=hifigan_model_dir,

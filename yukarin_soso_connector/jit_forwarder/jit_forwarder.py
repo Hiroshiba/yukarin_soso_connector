@@ -71,31 +71,26 @@ class JitForwarder(nn.Module):
             self.yukarin_soso_forwarder = None
             assert forwarder.yukarin_soso_generator is None
 
-            yukarin_sosoa_forwarder = torch.jit.script(
-                JitYukarinSosoa(
-                    forwarder.yukarin_sosoa_generator.predictor, device=self.device
-                )
+            yukarin_sosoa_forwarder = JitYukarinSosoa(
+                forwarder.yukarin_sosoa_generator.predictor, device=self.device
             )
-            print("--- yukarin_sosoa forwarder ---\n", yukarin_sosoa_forwarder.code)
+            # print("--- yukarin_sosoa forwarder ---\n", yukarin_sosoa_forwarder.code)
 
             # hifi-gan
-            hifi_gan_forwarder = torch.jit.trace(
-                forwarder.hifi_gan_predictor,
-                torch.rand(
-                    1,
-                    forwarder.hifi_gan_predictor.conv_pre.in_channels,
-                    1,
-                    device=self.device,
-                ),
-            )
-            print("--- hifi_gan forwarder ---\n", hifi_gan_forwarder.code)
+            hifi_gan_forwarder = forwarder.hifi_gan_predictor
+            # print("--- hifi_gan forwarder ---\n", hifi_gan_forwarder.code)
 
             # decode
-            self.decode_forwarder = torch.jit.script(
+            self.decode_forwarder = torch.jit.trace(
                 JitDecodeForwarder(
                     yukarin_sosoa_forwarder=yukarin_sosoa_forwarder,
                     hifi_gan_forwarder=hifi_gan_forwarder,
-                )
+                ),
+                (
+                    torch.rand(1, 1, device=self.device),
+                    torch.rand(1, self.phoneme_class.num_phoneme, device=self.device),
+                    torch.zeros(1, dtype=torch.int64, device=self.device),
+                ),
             )
 
         else:

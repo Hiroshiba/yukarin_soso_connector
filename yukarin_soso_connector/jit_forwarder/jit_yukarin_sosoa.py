@@ -40,17 +40,11 @@ class JitYukarinSosoa(nn.Module):
 
         predictor.encoder.embed[0].pe = predictor.encoder.embed[0].pe.to(device)
 
-        self.speaker_embedder = torch.jit.script(predictor.speaker_embedder)
-        self.pre = torch.jit.script(predictor.pre)
-        self.encoder = torch.jit.trace(
-            predictor.encoder,
-            (
-                torch.rand(1, 1, predictor.pre.out_features, device=device),
-                make_non_pad_mask(torch.tensor([1], device=device)).unsqueeze(-2),
-            ),
-        )
-        self.post = torch.jit.script(predictor.post)
-        self.postnet = torch.jit.script(JitPostnet(predictor.postnet))
+        self.speaker_embedder = predictor.speaker_embedder
+        self.pre = predictor.pre
+        self.encoder = predictor.encoder
+        self.post = predictor.post
+        self.postnet = JitPostnet(predictor.postnet)
 
     def forward(
         self,
@@ -61,13 +55,12 @@ class JitYukarinSosoa(nn.Module):
         h = torch.cat((f0, phoneme), dim=1)  # (length, ?)
         h = h.unsqueeze(0)  # (batch_size, length, ?)
 
-        if self.speaker_embedder is not None and speaker_id is not None:
-            speaker_id = self.speaker_embedder(speaker_id)
-            speaker_id = speaker_id.unsqueeze(dim=1)  # (batch_size, 1, ?)
-            speaker_feature = speaker_id.expand(
-                speaker_id.shape[0], h.shape[1], speaker_id.shape[2]
-            )  # (batch_size, length, ?)
-            h = torch.cat((h, speaker_feature), dim=2)  # (batch_size, length, ?)
+        speaker_id = self.speaker_embedder(speaker_id)
+        speaker_id = speaker_id.unsqueeze(dim=1)  # (batch_size, 1, ?)
+        speaker_feature = speaker_id.expand(
+            speaker_id.shape[0], h.shape[1], speaker_id.shape[2]
+        )  # (batch_size, length, ?)
+        h = torch.cat((h, speaker_feature), dim=2)  # (batch_size, length, ?)
 
         h = self.pre(h)
 

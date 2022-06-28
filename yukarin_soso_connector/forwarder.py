@@ -20,7 +20,6 @@ from yukarin_sosoa.config import Config as ConfigSosoa
 from yukarin_sosoa.generator import Generator as YukarinSosoaGenerator
 
 from acoustic_feature_extractor.data.phoneme import BasePhoneme, phoneme_type_to_class
-from acoustic_feature_extractor.data.sampling_data import SamplingData
 from yukarin_soso_connector.full_context_label import extract_full_context_label
 from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
 
@@ -46,9 +45,11 @@ class Forwarder:
         with yukarin_s_model_dir.joinpath("config.yaml").open() as f:
             config = ConfigS.from_dict(yaml.safe_load(f))
 
+        predictor = get_predictor_model_path(yukarin_s_model_dir, prefix="model")
+        print("predictor:", predictor)
         yukarin_s_generator = GeneratorS(
             config=config,
-            predictor=get_predictor_model_path(yukarin_s_model_dir, prefix="model"),
+            predictor=predictor,
             use_gpu=use_gpu,
         )
         yukarin_s_generator.predictor.apply(remove_weight_norm)
@@ -63,11 +64,11 @@ class Forwarder:
             with yukarin_sa_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSa.from_dict(yaml.safe_load(f))
 
+            predictor = get_predictor_model_path(yukarin_sa_model_dir, prefix="model")
+            print("predictor:", predictor)
             yukarin_sa_generator = GeneratorSa(
                 config=config,
-                predictor=get_predictor_model_path(
-                    yukarin_sa_model_dir, prefix="model"
-                ),
+                predictor=predictor,
                 use_gpu=use_gpu,
             )
             yukarin_sa_generator.predictor.apply(remove_weight_norm)
@@ -87,11 +88,11 @@ class Forwarder:
             with yukarin_saa_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSaa.from_dict(yaml.safe_load(f))
 
+            predictor = get_predictor_model_path(yukarin_saa_model_dir, prefix="model")
+            print("predictor:", predictor)
             yukarin_saa_generator = GeneratorSaa(
                 config=config,
-                predictor=get_predictor_model_path(
-                    yukarin_saa_model_dir, prefix="model"
-                ),
+                predictor=predictor,
                 use_gpu=use_gpu,
             )
             yukarin_saa_generator.predictor.apply(remove_weight_norm)
@@ -112,11 +113,11 @@ class Forwarder:
             with yukarin_soso_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSoso.from_dict(yaml.safe_load(f))
 
+            predictor = get_predictor_model_path(yukarin_soso_model_dir, prefix="model")
+            print("predictor:", predictor)
             yukarin_soso_generator = YukarinSosoGenerator(
                 config=config,
-                predictor=get_predictor_model_path(
-                    yukarin_soso_model_dir, prefix="model"
-                ),
+                predictor=predictor,
                 use_gpu=use_gpu,
             )
             yukarin_soso_generator.predictor.apply(remove_weight_norm)
@@ -135,11 +136,11 @@ class Forwarder:
             with yukarin_sosoa_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSosoa.from_dict(yaml.safe_load(f))
 
+            predictor = get_predictor_model_path(yukarin_sosoa_model_dir, prefix="model")
+            print("predictor:", predictor)
             yukarin_sosoa_generator = YukarinSosoaGenerator(
                 config=config,
-                predictor=get_predictor_model_path(
-                    yukarin_sosoa_model_dir, prefix="model"
-                ),
+                predictor=predictor,
                 use_gpu=use_gpu,
             )
             yukarin_sosoa_generator.predictor.apply(remove_weight_norm)

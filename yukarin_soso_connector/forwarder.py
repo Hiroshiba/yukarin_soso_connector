@@ -45,7 +45,7 @@ class Forwarder:
         with yukarin_s_model_dir.joinpath("config.yaml").open() as f:
             config = ConfigS.from_dict(yaml.safe_load(f))
 
-        predictor = get_predictor_model_path(yukarin_s_model_dir, prefix="model")
+        predictor = get_predictor_model_path(yukarin_s_model_dir, prefix="")
         print("predictor:", predictor)
         yukarin_s_generator = GeneratorS(
             config=config,
@@ -64,7 +64,7 @@ class Forwarder:
             with yukarin_sa_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSa.from_dict(yaml.safe_load(f))
 
-            predictor = get_predictor_model_path(yukarin_sa_model_dir, prefix="model")
+            predictor = get_predictor_model_path(yukarin_sa_model_dir, prefix="")
             print("predictor:", predictor)
             yukarin_sa_generator = GeneratorSa(
                 config=config,
@@ -88,7 +88,7 @@ class Forwarder:
             with yukarin_saa_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSaa.from_dict(yaml.safe_load(f))
 
-            predictor = get_predictor_model_path(yukarin_saa_model_dir, prefix="model")
+            predictor = get_predictor_model_path(yukarin_saa_model_dir, prefix="")
             print("predictor:", predictor)
             yukarin_saa_generator = GeneratorSaa(
                 config=config,
@@ -113,7 +113,7 @@ class Forwarder:
             with yukarin_soso_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSoso.from_dict(yaml.safe_load(f))
 
-            predictor = get_predictor_model_path(yukarin_soso_model_dir, prefix="model")
+            predictor = get_predictor_model_path(yukarin_soso_model_dir, prefix="")
             print("predictor:", predictor)
             yukarin_soso_generator = YukarinSosoGenerator(
                 config=config,
@@ -136,7 +136,7 @@ class Forwarder:
             with yukarin_sosoa_model_dir.joinpath("config.yaml").open() as f:
                 config = ConfigSosoa.from_dict(yaml.safe_load(f))
 
-            predictor = get_predictor_model_path(yukarin_sosoa_model_dir, prefix="model")
+            predictor = get_predictor_model_path(yukarin_sosoa_model_dir, prefix="")
             print("predictor:", predictor)
             yukarin_sosoa_generator = YukarinSosoaGenerator(
                 config=config,
@@ -167,7 +167,7 @@ class Forwarder:
                 get_predictor_model_path(
                     hifigan_model_dir,
                     iteration=hifigan_model_iteration,
-                    prefix="model",
+                    prefix="g_",
                     postfix="",
                 ),
                 map_location=device,

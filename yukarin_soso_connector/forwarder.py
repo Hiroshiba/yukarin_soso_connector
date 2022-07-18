@@ -381,28 +381,31 @@ class Forwarder:
             # forward vits
             from vits import commons as vits_commons
 
-            x_tst = (
-                torch.LongTensor(vits_commons.intersperse(phoneme_list_s + 1, 0))
-                .unsqueeze(0)
-                .to(self.device)
-            )
+            blank = False
 
-            array = numpy.zeros(len(phoneme_list_s), dtype=numpy.float32)
+            num = len(phoneme_list_s)
+
+            phoneme_list_s = phoneme_list_s + 1
+            if blank:
+                phoneme_list_s = vits_commons.intersperse(phoneme_list_s, 0)
+            x_tst = torch.LongTensor(phoneme_list_s).unsqueeze(0).to(self.device)
+
+            array = numpy.zeros(num, dtype=numpy.float32)
             array[vowel_indexes] = f0_list
-            x1 = (
-                torch.FloatTensor(vits_commons.intersperse(array, 0))
-                .unsqueeze(0)
-                .unsqueeze(1)
-                .to(self.device)
-            )
+            if blank:
+                array = vits_commons.intersperse(array, 0)
+            x1 = torch.FloatTensor(array).unsqueeze(0).unsqueeze(1).to(self.device)
 
-            array = numpy.ceil(phoneme_length * 128 / 2)
-            length = (
-                torch.FloatTensor(vits_commons.intersperse(array, 0))
-                .unsqueeze(0)
-                .unsqueeze(1)
-                .to(self.device)
-            )
+            # array = numpy.ceil(phoneme_length * 128 / 2)
+            # if blank:
+            #     array = vits_commons.intersperse(array, 0)
+            # length = (
+            #     torch.FloatTensor(array)
+            #     .unsqueeze(0)
+            #     .unsqueeze(1)
+            #     .to(self.device)
+            # )
+            length = None
 
             sid = torch.LongTensor([speaker_id]).to(self.device)
             wave = (

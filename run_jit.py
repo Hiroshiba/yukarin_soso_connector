@@ -20,12 +20,17 @@ def run(
     hifigan_model_dir: Path,
     hifigan_model_iteration: Optional[str],
     use_gpu: bool,
-    texts: List[str],
+    texts: Optional[List[str]],
+    text_path: Optional[Path],
     speaker_ids: List[int],
     f0_speaker_ids: Optional[List[int]],
     f0_correct: float,
     with_load: bool,
 ):
+    if text_path is not None:
+        texts = [line.strip() for line in text_path.read_text().splitlines()]
+    assert texts is not None
+
     if f0_speaker_ids is None or len(f0_speaker_ids) == 0:
         f0_speaker_ids = speaker_ids
     else:
@@ -117,7 +122,8 @@ if __name__ == "__main__":
     parser.add_argument("--hifigan_model_dir", type=Path, required=True)
     parser.add_argument("--hifigan_model_iteration")
     parser.add_argument("--use_gpu", action="store_true")
-    parser.add_argument("--texts", nargs="+", required=True)
+    parser.add_argument("--texts", nargs="+")
+    parser.add_argument("--text_path", type=Path)
     parser.add_argument("--speaker_ids", nargs="+", type=int, required=True)
     parser.add_argument("--f0_speaker_ids", nargs="*", type=int)
     parser.add_argument("--f0_correct", type=float, default=0)

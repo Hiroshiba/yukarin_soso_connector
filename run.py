@@ -24,9 +24,12 @@ def run(
     text_path: Optional[Path],
     speaker_ids: List[int],
     f0_speaker_ids: Optional[List[int]],
+    length_speaker_ids: Optional[List[int]],
     f0_correct: float,
     prefix: Optional[str],
 ):
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     if text_path is not None:
         texts = [line.strip() for line in text_path.read_text().splitlines()]
     assert texts is not None
@@ -47,15 +50,20 @@ def run(
     if f0_speaker_ids is None:
         f0_speaker_ids = speaker_ids
 
-    assert len(f0_speaker_ids) == len(speaker_ids)
+    if length_speaker_ids is None:
+        length_speaker_ids = f0_speaker_ids
 
-    for text, (speaker_id, f0_speaker_id) in tqdm(
-        list(product(texts, zip(speaker_ids, f0_speaker_ids)))
+    assert len(f0_speaker_ids) == len(speaker_ids)
+    assert len(length_speaker_ids) == len(speaker_ids)
+
+    for text, (speaker_id, f0_speaker_id, length_speaker_id) in tqdm(
+        list(product(texts, zip(speaker_ids, f0_speaker_ids, length_speaker_ids)))
     ):
         wave, _ = forwarder.forward(
             text=text,
             speaker_id=speaker_id,
             f0_speaker_id=f0_speaker_id,
+            length_speaker_id=length_speaker_id,
             f0_correct=f0_correct,
         )
 
@@ -80,6 +88,7 @@ if __name__ == "__main__":
     parser.add_argument("--text_path", type=Path)
     parser.add_argument("--speaker_ids", nargs="+", type=int, required=True)
     parser.add_argument("--f0_speaker_ids", nargs="+", type=int)
+    parser.add_argument("--length_speaker_ids", nargs="+", type=int)
     parser.add_argument("--f0_correct", type=float, default=0)
     parser.add_argument("--prefix")
     run(**vars(parser.parse_args()))

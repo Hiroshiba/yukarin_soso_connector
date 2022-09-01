@@ -223,7 +223,12 @@ class Forwarder:
 
     @torch.no_grad()
     def forward(
-        self, text: str, speaker_id: int, f0_speaker_id: int, f0_correct: float = 0
+        self,
+        text: str,
+        speaker_id: int,
+        f0_speaker_id: int,
+        length_speaker_id: int,
+        f0_correct: float = 0,
     ):
         # phoneme
         utterance = extract_full_context_label(text)
@@ -280,7 +285,7 @@ class Forwarder:
         phoneme_list_s = numpy.array([p.phoneme_id for p in phoneme_data_list])
 
         phoneme_length = self.yukarin_s_generator.generate(
-            phoneme_list=phoneme_list_s, speaker_id=f0_speaker_id
+            phoneme_list=phoneme_list_s, speaker_id=length_speaker_id
         )
         phoneme_length[0] = phoneme_length[-1] = 0.5
         phoneme_length[phoneme_length < 0.01] = 0.01

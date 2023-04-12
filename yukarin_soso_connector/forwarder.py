@@ -5,6 +5,7 @@ from typing import Optional, Type
 import numpy
 import torch
 import yaml
+from acoustic_feature_extractor.data.phoneme import BasePhoneme, phoneme_type_to_class
 from hifi_gan.env import AttrDict
 from hifi_gan.models import Generator as HifiGanPredictor
 from yukarin_s.config import Config as ConfigS
@@ -19,7 +20,6 @@ from yukarin_soso.generator import Generator as YukarinSosoGenerator
 from yukarin_sosoa.config import Config as ConfigSosoa
 from yukarin_sosoa.generator import Generator as YukarinSosoaGenerator
 
-from acoustic_feature_extractor.data.phoneme import BasePhoneme, phoneme_type_to_class
 from yukarin_soso_connector.full_context_label import extract_full_context_label
 from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
 
@@ -32,9 +32,8 @@ class Forwarder:
         yukarin_saa_model_dir: Optional[Path],
         yukarin_soso_model_dir: Optional[Path],
         yukarin_sosoa_model_dir: Optional[Path],
-        hifigan_model_dir: Optional[Path],
+        hifigan_model_dir: Path,
         hifigan_model_iteration: Optional[str],
-        vits_model_dir: Optional[Path],
         prefix: Optional[str],
         use_gpu: bool,
     ):
@@ -160,64 +159,27 @@ class Forwarder:
             self.yukarin_sosoa_generator = None
 
         # hifi-gan
-        if hifigan_model_dir is not None:
-            device = yukarin_s_generator.device
-            vocoder_model_config = AttrDict(
-                json.loads((hifigan_model_dir / "config.json").read_text())
-            )
+        device = yukarin_s_generator.device
+        vocoder_model_config = AttrDict(
+            json.loads((hifigan_model_dir / "config.json").read_text())
+        )
 
-            hifi_gan_predictor = HifiGanPredictor(vocoder_model_config).to(device)
-            checkpoint_dict = torch.load(
-                get_predictor_model_path(
-                    hifigan_model_dir,
-                    iteration=hifigan_model_iteration,
-                    prefix="g_",
-                    postfix="",
-                ),
-                map_location=device,
-            )
-            hifi_gan_predictor.load_state_dict(checkpoint_dict["generator"])
-            hifi_gan_predictor.eval()
-            hifi_gan_predictor.remove_weight_norm()
+        hifi_gan_predictor = HifiGanPredictor(vocoder_model_config).to(device)
+        checkpoint_dict = torch.load(
+            get_predictor_model_path(
+                hifigan_model_dir,
+                iteration=hifigan_model_iteration,
+                prefix="g_",
+                postfix="",
+            ),
+            map_location=device,
+        )
+        hifi_gan_predictor.load_state_dict(checkpoint_dict["generator"])
+        hifi_gan_predictor.eval()
+        hifi_gan_predictor.remove_weight_norm()
 
-            self.hifi_gan_predictor = hifi_gan_predictor
-            print("hifi-gan loaded!")
-
-        else:
-            self.hifi_gan_predictor = None
-
-        # vits
-        if vits_model_dir is not None:
-            from vits import utils as vits_utils
-            from vits.models import SynthesizerTrn
-            from vits.text.symbols import symbols as vits_symbols
-
-            device = yukarin_s_generator.device
-            hps = vits_utils.get_hparams_from_file(vits_model_dir / "config.json")
-
-            vits_predictor = SynthesizerTrn(
-                len(vits_symbols),
-                hps.data.filter_length // 2 + 1,
-                hps.train.segment_size // hps.data.hop_length,
-                n_speakers=hps.data.n_speakers,
-                **hps.model,
-            )
-            vits_predictor.eval().to(device)
-            vits_utils.load_checkpoint(
-                get_predictor_model_path(
-                    vits_model_dir,
-                    iteration=hifigan_model_iteration,
-                    prefix="G_",
-                ),
-                vits_predictor,
-            )
-            vits_predictor.apply(remove_weight_norm)
-
-            self.vits_predictor = vits_predictor
-            print("vits loaded!")
-
-        else:
-            self.vits_predictor = None
+        self.hifi_gan_predictor = hifi_gan_predictor
+        print("hifi-gan loaded!")
 
         self.device = device
 
@@ -339,94 +301,44 @@ class Forwarder:
             if p.phoneme in unvoiced_mora_phoneme_list:
                 f0_list[i] = 0
 
-        if not self.vits_predictor:
-            rate = 24000 / 256
+        rate = 24000 / 256
 
-            phoneme = numpy.repeat(
-                phoneme_list_s, numpy.round(phoneme_length * rate).astype(numpy.int32)
-            )
-            f0 = numpy.repeat(
-                f0_list, numpy.round(phoneme_length_sa * rate).astype(numpy.int32)
-            )
-            phoneme = phoneme[: min(len(phoneme), len(f0))]
-            f0 = f0[: min(len(phoneme), len(f0))]
+        phoneme = numpy.repeat(
+            phoneme_list_s, numpy.round(phoneme_length * rate).astype(numpy.int32)
+        )
+        f0 = numpy.repeat(
+            f0_list, numpy.round(phoneme_length_sa * rate).astype(numpy.int32)
+        )
+        phoneme = phoneme[: min(len(phoneme), len(f0))]
+        f0 = f0[: min(len(phoneme), len(f0))]
 
-            # forward yukarin soso or sosoa
-            array = numpy.zeros(
-                (len(phoneme), self.phoneme_class.num_phoneme), dtype=numpy.float32
-            )
-            array[numpy.arange(len(phoneme)), phoneme] = 1
-            phoneme = array
+        # forward yukarin soso or sosoa
+        array = numpy.zeros(
+            (len(phoneme), self.phoneme_class.num_phoneme), dtype=numpy.float32
+        )
+        array[numpy.arange(len(phoneme)), phoneme] = 1
+        phoneme = array
 
-            if self.yukarin_soso_generator is not None:
-                spec = self.yukarin_soso_generator.generate(
-                    f0=[f0[:, numpy.newaxis]],
-                    phoneme=[phoneme],
-                    speaker_id=numpy.array(speaker_id).reshape(-1),
-                )[0]
-            else:
-                spec = self.yukarin_sosoa_generator.generate(
-                    f0_list=[f0[:, numpy.newaxis]],
-                    phoneme_list=[phoneme],
-                    speaker_id=numpy.array(speaker_id).reshape(-1),
-                )[0]
-
-            # forward hifi gan
-            x = spec.T
-            wave = (
-                self.hifi_gan_predictor(
-                    torch.FloatTensor(x).unsqueeze(0).to(self.device)
-                )
-                .squeeze()
-                .cpu()
-                .numpy()
-            )
-
+        if self.yukarin_soso_generator is not None:
+            spec = self.yukarin_soso_generator.generate(
+                f0=[f0[:, numpy.newaxis]],
+                phoneme=[phoneme],
+                speaker_id=numpy.array(speaker_id).reshape(-1),
+            )[0]
         else:
-            # forward vits
-            from vits import commons as vits_commons
+            spec = self.yukarin_sosoa_generator.generate(
+                f0_list=[f0[:, numpy.newaxis]],
+                phoneme_list=[phoneme],
+                speaker_id=numpy.array(speaker_id).reshape(-1),
+            )[0]
 
-            blank = False
-
-            num = len(phoneme_list_s)
-
-            phoneme_list_s = phoneme_list_s + 1
-            if blank:
-                phoneme_list_s = vits_commons.intersperse(phoneme_list_s, 0)
-            x_tst = torch.LongTensor(phoneme_list_s).unsqueeze(0).to(self.device)
-
-            array = numpy.zeros(num, dtype=numpy.float32)
-            array[vowel_indexes] = f0_list
-            if blank:
-                array = vits_commons.intersperse(array, 0)
-            x1 = torch.FloatTensor(array).unsqueeze(0).unsqueeze(1).to(self.device)
-
-            # array = numpy.ceil(phoneme_length * 128 / 2)
-            # if blank:
-            #     array = vits_commons.intersperse(array, 0)
-            # length = (
-            #     torch.FloatTensor(array)
-            #     .unsqueeze(0)
-            #     .unsqueeze(1)
-            #     .to(self.device)
-            # )
-            length = None
-
-            sid = torch.LongTensor([speaker_id]).to(self.device)
-            wave = (
-                self.vits_predictor.infer1(
-                    x_tst,
-                    x1,
-                    length=length,
-                    sid=sid,
-                    noise_scale=0,
-                    noise_scale_w=0,
-                )[0, 0]
-                .data.cpu()
-                .float()
-                .numpy()
-            )
-
-            spec = None
+        # forward hifi gan
+        x = spec.T
+        wave = (
+            self.hifi_gan_predictor(torch.FloatTensor(x).unsqueeze(0).to(self.device))
+            .squeeze()
+            .cpu()
+            .numpy()
+        )
 
         return wave, (phoneme_length, f0_list, spec)

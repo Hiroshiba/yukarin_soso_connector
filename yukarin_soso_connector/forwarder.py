@@ -15,6 +15,8 @@ from yukarin_sa.dataset import split_mora, unvoiced_mora_phoneme_list
 from yukarin_sa.generator import Generator as GeneratorSa
 from yukarin_saa.config import Config as ConfigSaa
 from yukarin_saa.generator import Generator as GeneratorSaa
+from yukarin_sosf.config import Config as ConfigSosf
+from yukarin_sosf.generator import Generator as YukarinSosfGenerator
 from yukarin_soso.config import Config as ConfigSoso
 from yukarin_soso.generator import Generator as YukarinSosoGenerator
 from yukarin_sosoa.config import Config as ConfigSosoa
@@ -30,6 +32,7 @@ class Forwarder:
         yukarin_s_model_dir: Path,
         yukarin_sa_model_dir: Optional[Path],
         yukarin_saa_model_dir: Optional[Path],
+        yukarin_sosf_model_dir: Optional[Path],
         yukarin_soso_model_dir: Optional[Path],
         yukarin_sosoa_model_dir: Optional[Path],
         hifigan_model_dir: Path,
@@ -111,6 +114,25 @@ class Forwarder:
         else:
             self.yukarin_saa_generator = None
 
+        # yukarin_sosf
+        if yukarin_sosf_model_dir is not None:
+            with yukarin_sosf_model_dir.joinpath("config.yaml").open() as f:
+                config = ConfigSosf.from_dict(yaml.safe_load(f))
+
+            predictor = get_predictor_model_path(yukarin_sosf_model_dir, prefix=prefix)
+            print("predictor:", predictor)
+            yukarin_sosf_generator = YukarinSosfGenerator(
+                config=config,
+                predictor=predictor,
+                use_gpu=use_gpu,
+            )
+            yukarin_sosf_generator.predictor.apply(remove_weight_norm)
+
+            self.yukarin_sosf_generator = yukarin_sosf_generator
+            print("yukarin_sosf loaded!")
+        else:
+            self.yukarin_sosf_generator = None
+
         # yukarin_soso or yukarin_sosoa
         if yukarin_soso_model_dir is not None:
             with yukarin_soso_model_dir.joinpath("config.yaml").open() as f:
@@ -179,6 +201,7 @@ class Forwarder:
         hifi_gan_predictor.remove_weight_norm()
 
         self.hifi_gan_predictor = hifi_gan_predictor
+        self.hifi_gan_with_f0 = vocoder_model_config.with_hn
         print("hifi-gan loaded!")
 
         self.device = device
@@ -312,6 +335,16 @@ class Forwarder:
         phoneme = phoneme[: min(len(phoneme), len(f0))]
         f0 = f0[: min(len(phoneme), len(f0))]
 
+        # forward yukarin sosf
+        if self.yukarin_sosf_generator is not None:
+            output = self.yukarin_sosf_generator.forward(
+                discrete_f0_list=[f0[:, numpy.newaxis]],
+                phoneme_list=[phoneme],
+                speaker_id=numpy.array(speaker_id).reshape(-1),
+            )[0]
+            f0 = output["f0"].cpu().numpy()
+            f0[output["voiced"].cpu().numpy() < 0] = 0
+
         # forward yukarin soso or sosoa
         array = numpy.zeros(
             (len(phoneme), self.phoneme_class.num_phoneme), dtype=numpy.float32
@@ -334,8 +367,17 @@ class Forwarder:
 
         # forward hifi gan
         x = spec.T
+        ef0 = numpy.copy(f0)
+        ef0[ef0 > 0] = numpy.exp(ef0[ef0 > 0])
         wave = (
-            self.hifi_gan_predictor(torch.FloatTensor(x).unsqueeze(0).to(self.device))
+            self.hifi_gan_predictor(
+                torch.FloatTensor(x).unsqueeze(0).to(self.device),
+                (
+                    torch.FloatTensor(ef0).unsqueeze(0).to(self.device)
+                    if self.hifi_gan_with_f0
+                    else None
+                ),
+            )
             .squeeze()
             .cpu()
             .numpy()

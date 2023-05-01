@@ -1,6 +1,7 @@
 pyopenjtalk
 pyyaml
 soundfile
+torch==1.9.0
 git+https://github.com/Hiroshiba/acoustic_feature_extractor
 git+https://github.com/Hiroshiba/yukarin_s
 git+https://github.com/Hiroshiba/yukarin_sa

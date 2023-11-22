@@ -213,7 +213,8 @@ class Forwarder:
         speaker_id: int,
         f0_speaker_id: int,
         length_speaker_id: int,
-        f0_correct: float = 0,
+        f0_correct: float = 0,  # +=
+        length_correct: float = 1,  # *=
     ):
         # phoneme
         utterance = extract_full_context_label(text)
@@ -272,6 +273,7 @@ class Forwarder:
         phoneme_length = self.yukarin_s_generator.generate(
             phoneme_list=phoneme_list_s, speaker_id=length_speaker_id
         )
+        phoneme_length *= length_correct
         phoneme_length[0] = phoneme_length[-1] = 0.5
         phoneme_length[phoneme_length < 0.01] = 0.01
 

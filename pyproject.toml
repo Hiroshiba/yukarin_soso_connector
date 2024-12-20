@@ -1,0 +1,33 @@
+[project]
+name = "yukarin-soso-connector"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "hifi-gan",
+    "numpy==1.24.4",
+    "pyopenjtalk==0.3.4",
+    "pyyaml==6.0.2",
+    "soundfile==0.12.1",
+    "torch==2.5.1",
+    "yukarin-s",
+    "yukarin-sa",
+    "yukarin-sosoa",
+]
+
+[tool.uv.sources]
+yukarin-s = { git = "https://github.com/Hiroshiba/yukarin_s" }
+yukarin-sa = { git = "https://github.com/Hiroshiba/yukarin_sa" }
+yukarin-sosoa = { git = "https://github.com/Hiroshiba/yukarin_sosoa" }
+hifi-gan = { git = "https://github.com/Hiroshiba/hifi-gan" }
+utmosv2 = { git = "https://github.com/sarulab-speech/UTMOSv2.git" }
+
+[dependency-groups]
+dev = [
+    "ipykernel==6.29.5",
+    "pandas==2.1.0",
+    "seaborn==0.12.1",
+    "torchaudio==2.5.1",
+    "utmosv2",
+]

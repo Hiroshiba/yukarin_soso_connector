@@ -5,7 +5,6 @@ from typing import Optional, Type
 import numpy
 import torch
 import yaml
-from acoustic_feature_extractor.data.phoneme import BasePhoneme, phoneme_type_to_class
 from hifi_gan.env import AttrDict
 from hifi_gan.models import Generator as HifiGanPredictor
 from yukarin_s.config import Config as ConfigS
@@ -13,17 +12,15 @@ from yukarin_s.generator import Generator as GeneratorS
 from yukarin_sa.config import Config as ConfigSa
 from yukarin_sa.dataset import split_mora, unvoiced_mora_phoneme_list
 from yukarin_sa.generator import Generator as GeneratorSa
-from yukarin_saa.config import Config as ConfigSaa
-from yukarin_saa.generator import Generator as GeneratorSaa
-from yukarin_sosf.config import Config as ConfigSosf
-from yukarin_sosf.generator import Generator as YukarinSosfGenerator
-from yukarin_soso.config import Config as ConfigSoso
-from yukarin_soso.generator import Generator as YukarinSosoGenerator
 from yukarin_sosoa.config import Config as ConfigSosoa
 from yukarin_sosoa.generator import Generator as YukarinSosoaGenerator
 
 from yukarin_soso_connector.full_context_label import extract_full_context_label
 from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
+from yukarin_soso_connector.acoustic_feature_extractor import (
+    BasePhoneme,
+    phoneme_type_to_class,
+)
 
 
 class Forwarder:
@@ -360,12 +357,18 @@ class Forwarder:
                 phoneme=[phoneme],
                 speaker_id=numpy.array(speaker_id).reshape(-1),
             )[0]
+        elif self.yukarin_sosoa_generator is not None:
+            spec = (
+                self.yukarin_sosoa_generator(
+                    f0_list=[f0[:, numpy.newaxis]],
+                    phoneme_list=[phoneme],
+                    speaker_id=numpy.array(speaker_id).reshape(-1),
+                )[0]["spec"]
+                .cpu()
+                .numpy()
+            )
         else:
-            spec = self.yukarin_sosoa_generator.generate(
-                f0_list=[f0[:, numpy.newaxis]],
-                phoneme_list=[phoneme],
-                speaker_id=numpy.array(speaker_id).reshape(-1),
-            )[0]
+            raise ValueError("yukarin_soso or yukarin_sosoa must be set")
 
         # forward hifi gan
         x = spec.T

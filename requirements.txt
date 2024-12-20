@@ -3,13 +3,11 @@ pyyaml
 soundfile
 torch
 numpy<1.24
-git+https://github.com/Hiroshiba/acoustic_feature_extractor
 git+https://github.com/Hiroshiba/yukarin_s
 git+https://github.com/Hiroshiba/yukarin_sa
-git+https://github.com/Hiroshiba/yukarin_saa
-git+https://github.com/Hiroshiba/yukarin_sos
-git+https://github.com/Hiroshiba/yukarin_sosf
-git+https://github.com/Hiroshiba/yukarin_soso
+# git+https://github.com/Hiroshiba/yukarin_saa
+# git+https://github.com/Hiroshiba/yukarin_sos
+# git+https://github.com/Hiroshiba/yukarin_sosf
+# git+https://github.com/Hiroshiba/yukarin_soso
 git+https://github.com/Hiroshiba/yukarin_sosoa
 git+https://github.com/Hiroshiba/hifi-gan
-git+https://github.com/r9y9/pyopenjtalk

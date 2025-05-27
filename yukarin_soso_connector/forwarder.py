@@ -15,12 +15,12 @@ from yukarin_sa.generator import Generator as GeneratorSa
 from yukarin_sosoa.config import Config as ConfigSosoa
 from yukarin_sosoa.generator import Generator as YukarinSosoaGenerator
 
-from yukarin_soso_connector.full_context_label import extract_full_context_label
-from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
 from yukarin_soso_connector.acoustic_feature_extractor import (
     BasePhoneme,
     phoneme_type_to_class,
 )
+from yukarin_soso_connector.full_context_label import extract_full_context_label
+from yukarin_soso_connector.utility import get_predictor_model_path, remove_weight_norm
 
 
 class Forwarder:
@@ -29,7 +29,6 @@ class Forwarder:
         yukarin_s_model_dir: Path,
         yukarin_sa_model_dir: Optional[Path],
         yukarin_saa_model_dir: Optional[Path],
-        yukarin_sosf_model_dir: Optional[Path],
         yukarin_soso_model_dir: Optional[Path],
         yukarin_sosoa_model_dir: Optional[Path],
         hifigan_model_dir: Path,
@@ -89,11 +88,11 @@ class Forwarder:
 
         if yukarin_saa_model_dir is not None:
             with yukarin_saa_model_dir.joinpath("config.yaml").open() as f:
-                config = ConfigSaa.from_dict(yaml.safe_load(f))
+                config = ConfigSa.from_dict(yaml.safe_load(f))
 
             predictor = get_predictor_model_path(yukarin_saa_model_dir, prefix=prefix)
             print("predictor:", predictor)
-            yukarin_saa_generator = GeneratorSaa(
+            yukarin_saa_generator = GeneratorSa(
                 config=config,
                 predictor=predictor,
                 use_gpu=use_gpu,
@@ -111,33 +110,14 @@ class Forwarder:
         else:
             self.yukarin_saa_generator = None
 
-        # yukarin_sosf
-        if yukarin_sosf_model_dir is not None:
-            with yukarin_sosf_model_dir.joinpath("config.yaml").open() as f:
-                config = ConfigSosf.from_dict(yaml.safe_load(f))
-
-            predictor = get_predictor_model_path(yukarin_sosf_model_dir, prefix=prefix)
-            print("predictor:", predictor)
-            yukarin_sosf_generator = YukarinSosfGenerator(
-                config=config,
-                predictor=predictor,
-                use_gpu=use_gpu,
-            )
-            yukarin_sosf_generator.predictor.apply(remove_weight_norm)
-
-            self.yukarin_sosf_generator = yukarin_sosf_generator
-            print("yukarin_sosf loaded!")
-        else:
-            self.yukarin_sosf_generator = None
-
         # yukarin_soso or yukarin_sosoa
         if yukarin_soso_model_dir is not None:
             with yukarin_soso_model_dir.joinpath("config.yaml").open() as f:
-                config = ConfigSoso.from_dict(yaml.safe_load(f))
+                config = ConfigSosoa.from_dict(yaml.safe_load(f))
 
             predictor = get_predictor_model_path(yukarin_soso_model_dir, prefix=prefix)
             print("predictor:", predictor)
-            yukarin_soso_generator = YukarinSosoGenerator(
+            yukarin_soso_generator = YukarinSosoaGenerator(
                 config=config,
                 predictor=predictor,
                 use_gpu=use_gpu,
@@ -333,16 +313,6 @@ class Forwarder:
         )
         phoneme = phoneme[: min(len(phoneme), len(f0))]
         f0 = f0[: min(len(phoneme), len(f0))]
-
-        # forward yukarin sosf
-        if self.yukarin_sosf_generator is not None:
-            output = self.yukarin_sosf_generator.forward(
-                discrete_f0_list=[f0[:, numpy.newaxis]],
-                phoneme_list=[phoneme],
-                speaker_id=numpy.array(speaker_id).reshape(-1),
-            )[0]
-            f0 = output["f0"].cpu().numpy()
-            f0[output["voiced"].cpu().numpy() < 0] = 0
 
         # forward yukarin soso or sosoa
         array = numpy.zeros(

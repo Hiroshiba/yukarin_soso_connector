@@ -1,6 +1,8 @@
 import argparse
+import shutil
 from itertools import product
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import List, Optional
 
 import soundfile
@@ -13,7 +15,6 @@ def run(
     yukarin_s_model_dir: Path,
     yukarin_sa_model_dir: Optional[Path],
     yukarin_saa_model_dir: Optional[Path],
-    yukarin_sosf_model_dir: Optional[Path],
     yukarin_soso_model_dir: Optional[Path],
     yukarin_sosoa_model_dir: Optional[Path],
     hifigan_model_dir: Path,
@@ -38,7 +39,6 @@ def run(
         yukarin_s_model_dir=yukarin_s_model_dir,
         yukarin_sa_model_dir=yukarin_sa_model_dir,
         yukarin_saa_model_dir=yukarin_saa_model_dir,
-        yukarin_sosf_model_dir=yukarin_sosf_model_dir,
         yukarin_soso_model_dir=yukarin_soso_model_dir,
         yukarin_sosoa_model_dir=yukarin_sosoa_model_dir,
         hifigan_model_dir=hifigan_model_dir,
@@ -67,9 +67,9 @@ def run(
             f0_correct=f0_correct,
         )
 
-        soundfile.write(
-            output_dir / f"{text}-{speaker_id}.wav", data=wave, samplerate=24000
-        )
+        with NamedTemporaryFile(suffix=".wav") as tmp:
+            soundfile.write(tmp.name, data=wave, samplerate=24000)
+            shutil.copyfile(tmp.name, output_dir / f"{text}-{speaker_id}.wav")
 
 
 if __name__ == "__main__":
@@ -77,7 +77,6 @@ if __name__ == "__main__":
     parser.add_argument("--yukarin_s_model_dir", type=Path, required=True)
     parser.add_argument("--yukarin_sa_model_dir", type=Path)
     parser.add_argument("--yukarin_saa_model_dir", type=Path)
-    parser.add_argument("--yukarin_sosf_model_dir", type=Path)
     parser.add_argument("--yukarin_soso_model_dir", type=Path)
     parser.add_argument("--yukarin_sosoa_model_dir", type=Path)
     parser.add_argument("--hifigan_model_dir", type=Path)

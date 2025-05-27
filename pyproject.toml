@@ -7,10 +7,11 @@ requires-python = ">=3.11"
 dependencies = [
     "hifi-gan",
     "numpy==1.24.4",
-    "pyopenjtalk==0.3.4",
+    "pyopenjtalk==0.4.1",
     "pyyaml==6.0.2",
     "soundfile==0.12.1",
     "torch==2.5.1",
+    "utmosv2",
     "yukarin-s",
     "yukarin-sa",
     "yukarin-sosoa",
@@ -21,7 +22,7 @@ yukarin-s = { git = "https://github.com/Hiroshiba/yukarin_s" }
 yukarin-sa = { git = "https://github.com/Hiroshiba/yukarin_sa" }
 yukarin-sosoa = { git = "https://github.com/Hiroshiba/yukarin_sosoa" }
 hifi-gan = { git = "https://github.com/Hiroshiba/hifi-gan" }
-utmosv2 = { git = "https://github.com/sarulab-speech/UTMOSv2.git" }
+utmosv2 = { git = "https://github.com/sarulab-speech/UTMOSv2", rev = "v1.1.1" }
 
 [dependency-groups]
 dev = [

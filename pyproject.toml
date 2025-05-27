@@ -10,25 +10,21 @@ dependencies = [
     "pyopenjtalk==0.4.1",
     "pyyaml==6.0.2",
     "soundfile==0.12.1",
-    "torch==2.5.1",
-    "utmosv2",
+    "torch",
     "yukarin-s",
     "yukarin-sa",
     "yukarin-sosoa",
 ]
 
 [tool.uv.sources]
-yukarin-s = { git = "https://github.com/Hiroshiba/yukarin_s" }
-yukarin-sa = { git = "https://github.com/Hiroshiba/yukarin_sa" }
-yukarin-sosoa = { git = "https://github.com/Hiroshiba/yukarin_sosoa" }
-hifi-gan = { git = "https://github.com/Hiroshiba/hifi-gan" }
-utmosv2 = { git = "https://github.com/sarulab-speech/UTMOSv2", rev = "v1.1.1" }
+yukarin-s = { git = "https://github.com/Hiroshiba/yukarin_s", rev = "7162969bd4c7ed7a96f47ff725b1461bb7c33c37" }
+yukarin-sa = { git = "https://github.com/Hiroshiba/yukarin_sa", rev = "95da7827a79eda2b94cde3333010ece4a08553ec" }
+yukarin-sosoa = { git = "https://github.com/Hiroshiba/yukarin_sosoa", rev = "976717c6ab6c6bf67f5a34d3136a85e8803a5f2d" }
+hifi-gan = { git = "https://github.com/Hiroshiba/hifi-gan", rev = "8f72015f1e7dfa559119b49143ca72eb585ba72e" }
 
 [dependency-groups]
 dev = [
     "ipykernel==6.29.5",
     "pandas==2.1.0",
     "seaborn==0.12.1",
-    "torchaudio==2.5.1",
-    "utmosv2",
 ]
